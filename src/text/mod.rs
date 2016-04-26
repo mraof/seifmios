@@ -30,18 +30,13 @@ struct Source {
     messages: u64,
 }
 
-struct Metadata {
-    author: AuthorCell,
-    source: SourceCell,
-}
-
 struct MessageWord {
     word: WordCell,
     category: CategoryCell,
 }
 
 struct Message {
-    metadata: Metadata,
+    author: AuthorCell,
     conversation: ConversationCell,
     index: usize,
     words: Vec<MessageWord>,
