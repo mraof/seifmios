@@ -9,6 +9,8 @@ type MessageCell = Rc<RefCell<Message>>;
 type CategoryCell = Rc<RefCell<Category>>;
 type ConversationCell = Rc<RefCell<Conversation>>;
 
+const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
+
 struct Lexicon {
     words: BTreeMap<String, WordCell>,
     authors: BTreeMap<String, AuthorCell>,
