@@ -12,10 +12,18 @@ type ConversationCell = Rc<RefCell<Conversation>>;
 const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
 
 struct Lexicon {
-    words: BTreeMap<String, WordCell>,
-    authors: BTreeMap<String, AuthorCell>,
-    sources: BTreeMap<String, SourceCell>,
+    words: BTreeMap<&'static str, WordCell>,
+    authors: BTreeMap<&'static str, AuthorCell>,
+    sources: BTreeMap<&'static str, SourceCell>,
     conversations: Vec<ConversationCell>,
+
+    active_conversations: BTreeMap<*const Source, ConversationCell>,
+}
+
+impl Lexicon {
+    fn tell(source: SourceCell, author: &str, message: &str) -> Option<String> {
+        None
+    }
 }
 
 struct Conversation {
