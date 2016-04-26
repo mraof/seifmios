@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -16,16 +17,26 @@ fn wrap<T>(t: T) -> Rc<RefCell<T>> {
 const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
 
 struct Lexicon {
-    words: BTreeMap<&'static str, WordCell>,
-    authors: BTreeMap<&'static str, AuthorCell>,
-    sources: BTreeMap<&'static str, SourceCell>,
+    words: BTreeMap<String, WordCell>,
+    authors: BTreeMap<String, AuthorCell>,
+    sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,
 
     active_conversations: BTreeMap<*const Source, ConversationCell>,
 }
 
 impl Lexicon {
-    fn tell(source: SourceCell, author: &str, message: &str) -> Option<String> {
+    fn tell(&mut self, source: SourceCell, author: String, message: String) -> Option<String> {
+        let author = match self.authors.entry(author.clone()) {
+            Entry::Vacant(v) => {
+                let a = wrap(Author{
+                    name: author.clone(),
+                });
+                v.insert(a.clone());
+                a
+            },
+            Entry::Occupied(o) => o.get().clone(),
+        };
         None
     }
 }
