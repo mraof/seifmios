@@ -9,6 +9,10 @@ type MessageCell = Rc<RefCell<Message>>;
 type CategoryCell = Rc<RefCell<Category>>;
 type ConversationCell = Rc<RefCell<Conversation>>;
 
+fn wrap<T>(t: T) -> Rc<RefCell<T>> {
+    Rc::new(RefCell::new(t))
+}
+
 const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
 
 struct Lexicon {
@@ -59,6 +63,7 @@ struct WordInstance {
 }
 
 struct Category {
+    supercategory: Option<CategoryCell>,
     instances: Vec<WordInstance>,
     subcategories: Vec<CategoryCell>,
 }
