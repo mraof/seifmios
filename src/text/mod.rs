@@ -26,7 +26,21 @@ struct Lexicon {
 }
 
 impl Lexicon {
-    fn tell(&mut self, source: SourceCell, author: String, message: String) -> Option<String> {
+    fn tell(&mut self, source: SourceCell, author: String, content: String) -> Option<String> {
+        let conversation = match self.active_conversations.entry(&*source.borrow() as *const Source) {
+            Entry::Vacant(v) => {
+                let c = wrap(Conversation{
+                    source: source.clone(),
+                    messages: Vec::new(),
+                });
+                v.insert(c.clone());
+                c
+            },
+            Entry::Occupied(o) => {
+                o.get().clone()
+            },
+        };
+
         let author = match self.authors.entry(author.clone()) {
             Entry::Vacant(v) => {
                 let a = wrap(Author{
@@ -37,6 +51,37 @@ impl Lexicon {
             },
             Entry::Occupied(o) => o.get().clone(),
         };
+
+        let message = wrap(Message{
+            author: author.clone(),
+            conversation: conversation.clone(),
+            index: conversation.borrow().messages.len(),
+            words: Vec::new(),
+        });
+
+        let words = content.split(' ').map(|s| {
+            let string = s.to_string();
+            match self.words.entry(string.clone()) {
+                Entry::Vacant(v) => {
+                    let mut w = wrap(Word{
+                        name: string,
+                        instances: Vec::new(),
+                    });
+                    v.insert(w.clone());
+                    w
+                },
+                Entry::Occupied(o) => {
+                    o.get().clone()
+                },
+            }
+        });
+
+        // Add words to the message and add instances to the words
+        {
+            // TODO: it
+        }
+
+        // TODO: Determine what to say back
         None
     }
 }
@@ -55,22 +100,18 @@ struct Source {
     messages: u64,
 }
 
-struct MessageWord {
+struct WordInstance {
     word: WordCell,
     category: CategoryCell,
+    message: MessageCell,
+    index: usize,
 }
 
 struct Message {
     author: AuthorCell,
     conversation: ConversationCell,
     index: usize,
-    words: Vec<MessageWord>,
-}
-
-struct WordInstance {
-    word: WordCell,
-    message: MessageCell,
-    index: usize,
+    words: Vec<WordInstance>,
 }
 
 struct Category {
