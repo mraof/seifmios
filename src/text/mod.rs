@@ -20,7 +20,7 @@ struct Lexicon {
 
 struct Conversation {
     source: SourceCell,
-    messages: Vec<Message>,
+    messages: Vec<MessageCell>,
 }
 
 struct Author {
