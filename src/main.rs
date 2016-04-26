@@ -1,2 +1,4 @@
+mod text;
+
 fn main() {
 }

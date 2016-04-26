@@ -1,0 +1,64 @@
+use std::collections::BTreeMap;
+use std::rc::Rc;
+use std::cell::RefCell;
+
+type WordCell = Rc<RefCell<Word>>;
+type AuthorCell = Rc<RefCell<Author>>;
+type SourceCell = Rc<RefCell<Source>>;
+type MessageCell = Rc<RefCell<Message>>;
+type CategoryCell = Rc<RefCell<Category>>;
+type ConversationCell = Rc<RefCell<Conversation>>;
+
+struct Lexicon {
+    words: BTreeMap<String, WordCell>,
+    authors: BTreeMap<String, AuthorCell>,
+    sources: BTreeMap<String, SourceCell>,
+    conversations: Vec<ConversationCell>,
+}
+
+struct Conversation {
+    source: SourceCell,
+    messages: Vec<Message>,
+}
+
+struct Author {
+    name: String,
+}
+
+struct Source {
+    name: String,
+    messages: u64,
+}
+
+struct Metadata {
+    author: AuthorCell,
+    source: SourceCell,
+}
+
+struct MessageWord {
+    word: WordCell,
+    category: CategoryCell,
+}
+
+struct Message {
+    metadata: Metadata,
+    conversation: ConversationCell,
+    index: usize,
+    words: Vec<MessageWord>,
+}
+
+struct WordInstance {
+    word: WordCell,
+    message: MessageCell,
+    index: usize,
+}
+
+struct Category {
+    instances: Vec<WordInstance>,
+    subcategories: Vec<CategoryCell>,
+}
+
+struct Word {
+    name: String,
+    instances: Vec<WordInstance>,
+}
