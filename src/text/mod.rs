@@ -1,4 +1,6 @@
 extern crate rand;
+extern crate itertools;
+use self::itertools::Itertools;
 
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
@@ -87,7 +89,7 @@ impl<R: rand::Rng> Lexicon<R> {
             author: author.clone(),
             conversation: conversation.clone(),
             index: conversation.borrow().messages.len(),
-            words: Vec::new(),
+            instances: Vec::new(),
         });
 
         self.messages.push(message.clone());
@@ -115,10 +117,10 @@ impl<R: rand::Rng> Lexicon<R> {
                 word: word.clone(),
                 category: category.clone(),
                 message: message.clone(),
-                index: message.borrow().words.len(),
+                index: message.borrow().instances.len(),
             });
             // Insert word instance into the word, category, and message for future reference
-            message.borrow_mut().words.push(instance.clone());
+            message.borrow_mut().instances.push(instance.clone());
             category.borrow_mut().instances.push(instance.clone());
             word.borrow_mut().instances.push(instance);
         }
@@ -128,6 +130,42 @@ impl<R: rand::Rng> Lexicon<R> {
 
         // TODO: Determine what to say back
         None
+    }
+
+    pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
+        let conversation = wrap(Conversation{
+            source: source.clone(),
+            messages: Vec::new(),
+        });
+
+        match self.active_conversations.entry(&*source.borrow() as *const Source) {
+            Entry::Vacant(v) => {
+                v.insert(conversation.clone());
+            },
+            Entry::Occupied(mut o) => {
+                o.insert(conversation.clone());
+            },
+        };
+
+        self.conversations.push(conversation.clone());
+
+        let base = match self.rng.choose(&self.messages[..]) {
+            Some(m) => m.clone(),
+            None => return None,
+        };
+
+        let bborrow = base.borrow();
+
+        Some(bborrow.instances.iter()
+            .map(|instance| instance.borrow().category.clone())
+            // TODO: Allow random choosing from co-category instances as well
+            .map(|category| self.rng.choose(&category.borrow().instances[..]).unwrap().clone())
+            .map(|instance| {
+                let ins = instance.borrow();
+                let word = ins.word.borrow();
+                word.name.clone()
+            })
+            .join(" "))
     }
 
     pub fn think(&mut self, end: Receiver<()>) {
@@ -149,7 +187,7 @@ impl<R: rand::Rng> Lexicon<R> {
             let mut vones = Vec::new();
 
             // Look through each word in the message
-            for word in &message.borrow().words {
+            for word in &message.borrow().instances {
                 let borrow = word.borrow();
                 // Check each instance in that words instances
                 for instance in &borrow.word.borrow().instances {
@@ -157,10 +195,10 @@ impl<R: rand::Rng> Lexicon<R> {
                     let omessage = instance.borrow().message.clone();
                     // Make sure we dont get the same message twice and assure the same length
                     if omessage != message &&
-                        omessage.borrow().words.len() == message.borrow().words.len() {
+                        omessage.borrow().instances.len() == message.borrow().instances.len() {
                         // Find what kind of matches exist between the messages
-                        if let Amount::One(best) = message.borrow().words.iter()
-                            .zip(omessage.borrow().words.iter())
+                        if let Amount::One(best) = message.borrow().instances.iter()
+                            .zip(omessage.borrow().instances.iter())
                             .fold(Amount::None, |acc, ws| {
                                 let bs = (ws.0.borrow(), ws.1.borrow());
                                 match acc {
@@ -250,7 +288,7 @@ struct Message {
     author: AuthorCell,
     conversation: ConversationCell,
     index: usize,
-    words: Vec<InstanceCell>,
+    instances: Vec<InstanceCell>,
 }
 
 pointer_eq!(Message);

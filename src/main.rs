@@ -20,5 +20,6 @@ fn main() {
             sender.send(()).ok().unwrap();
         });
         lex.think(receiver);
+        println!("lex says: {}", lex.initiate(nowhere.clone()).unwrap());
     });
 }
