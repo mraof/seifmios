@@ -6,3 +6,6 @@ version = "0.0.0"
 authors = ["Mraof <mraof@mraof.com>", "Geordon Worley <vadixidav@gmail.com>"]
 keywords = ["chat", "bot", "chatbot", "seifmios"]
 license = "BSD-2-Clause"
+
+[dependencies]
+rand = "0.3.14"

@@ -1,7 +1,10 @@
+extern crate rand;
+
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::sync::mpsc::Receiver;
 
 type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
@@ -18,7 +21,8 @@ fn wrap<T>(t: T) -> Rc<RefCell<T>> {
 // const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
 
 #[derive(Default)]
-pub struct Lexicon {
+pub struct Lexicon<R: rand::Rng> {
+    rng: R,
     words: BTreeMap<String, WordCell>,
     sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,
@@ -27,7 +31,18 @@ pub struct Lexicon {
     active_conversations: BTreeMap<*const Source, ConversationCell>,
 }
 
-impl Lexicon {
+impl<R: rand::Rng> Lexicon<R> {
+    pub fn new(rng: R) -> Lexicon<R> {
+        Lexicon{
+            rng: rng,
+            words: Default::default(),
+            sources: Default::default(),
+            conversations: Default::default(),
+            messages: Default::default(),
+            active_conversations: Default::default(),
+        }
+    }
+
     pub fn source(&mut self, name: String) -> SourceCell {
         match self.sources.entry(name.clone()) {
             Entry::Vacant(v) => v.insert(wrap(Source{
@@ -38,6 +53,7 @@ impl Lexicon {
             Entry::Occupied(o) => o.get().clone(),
         }
     }
+
     pub fn author(&mut self, source: SourceCell, name: String) -> AuthorCell {
         match source.borrow_mut().authors.entry(name.clone()) {
             Entry::Vacant(v) => {
@@ -112,6 +128,12 @@ impl Lexicon {
 
         // TODO: Determine what to say back
         None
+    }
+
+    pub fn think(&mut self, end: Receiver<()>) {
+        use std::sync::mpsc::TryRecvError::Empty;
+        while end.try_recv() == Err(Empty) {
+        }
     }
 }
 
