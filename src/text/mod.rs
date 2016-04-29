@@ -22,6 +22,7 @@ pub struct Lexicon {
     words: BTreeMap<String, WordCell>,
     sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,
+    messages: Vec<MessageCell>,
 
     active_conversations: BTreeMap<*const Source, ConversationCell>,
 }
@@ -72,6 +73,8 @@ impl Lexicon {
             index: conversation.borrow().messages.len(),
             words: Vec::new(),
         });
+
+        self.messages.push(message.clone());
 
         for word in content.split(' ').map(|s| {
             let string = s.to_string();
