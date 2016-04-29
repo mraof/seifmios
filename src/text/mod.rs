@@ -133,8 +133,86 @@ impl<R: rand::Rng> Lexicon<R> {
     pub fn think(&mut self, end: Receiver<()>) {
         use std::sync::mpsc::TryRecvError::Empty;
         while end.try_recv() == Err(Empty) {
+            // Choose a random message or break if there are none
+            let message = match self.rng.choose(&self.messages[..]) {
+                Some(m) => m.clone(),
+                None => break,
+            };
+
+            enum Amount<T> {
+                None,
+                One(T),
+                Multiple,
+            }
+
+            // Vector of absolute perfect matches
+            let mut vones = Vec::new();
+
+            // Look through each word in the message
+            for word in &message.borrow().words {
+                let borrow = word.borrow();
+                // Check each instance in that words instances
+                for instance in &borrow.word.borrow().instances {
+                    // Get the message for each instance
+                    let omessage = instance.borrow().message.clone();
+                    // Make sure we dont get the same message twice and assure the same length
+                    if omessage != message &&
+                        omessage.borrow().words.len() == message.borrow().words.len() {
+                        // Find what kind of matches exist between the messages
+                        if let Amount::One(best) = message.borrow().words.iter()
+                            .zip(omessage.borrow().words.iter())
+                            .fold(Amount::None, |acc, ws| {
+                                let bs = (ws.0.borrow(), ws.1.borrow());
+                                match acc {
+                                    Amount::None => {
+                                        if bs.0.word.borrow().name !=
+                                            bs.1.word.borrow().name {
+                                            Amount::One((ws.0.clone(), ws.1.clone()))
+                                        } else {
+                                            Amount::None
+                                        }
+                                    },
+                                    Amount::One(best) => {
+                                        if bs.0.word.borrow().name !=
+                                            bs.1.word.borrow().name {
+                                            Amount::Multiple
+                                        } else {
+                                            Amount::One(best)
+                                        }
+                                    },
+                                    Amount::Multiple => Amount::Multiple,
+                                }
+                            }) {
+                            vones.push(best);
+                        }
+                    }
+                }
+            }
+
+            // Now that we have perfect matches, merge them into the same Category
+            for ms in vones {
+                // We only want to combine if they aren't already in the same category
+                if ms.0.borrow().category != ms.0.borrow().category {
+                    Category::merge((ms.0.borrow().category.clone(),
+                        ms.0.borrow().category.clone()));
+                }
+            }
         }
     }
+}
+
+macro_rules! pointer_eq {
+    ($s:ident) => {
+        impl PartialEq for $s {
+            fn eq(&self, other: &Self) -> bool {
+                self as *const Self == other as *const Self
+            }
+
+            fn ne(&self, other: &Self) -> bool {
+                self as *const Self != other as *const Self
+            }
+        }
+    };
 }
 
 struct Conversation {
@@ -142,16 +220,22 @@ struct Conversation {
     messages: Vec<MessageCell>,
 }
 
+pointer_eq!(Conversation);
+
 pub struct Author {
     source: SourceCell,
     name: String,
 }
+
+pointer_eq!(Author);
 
 pub struct Source {
     name: String,
     messages: u64,
     authors: BTreeMap<String, AuthorCell>,
 }
+
+pointer_eq!(Source);
 
 struct WordInstance {
     word: WordCell,
@@ -160,6 +244,8 @@ struct WordInstance {
     index: usize,
 }
 
+pointer_eq!(WordInstance);
+
 struct Message {
     author: AuthorCell,
     conversation: ConversationCell,
@@ -167,14 +253,38 @@ struct Message {
     words: Vec<InstanceCell>,
 }
 
+pointer_eq!(Message);
+
 #[derive(Default)]
 struct Category {
-    supercategory: Option<CategoryCell>,
     instances: Vec<InstanceCell>,
-    subcategories: Vec<CategoryCell>,
+    cocategories: Vec<CategoryCell>,
 }
+
+impl Category {
+    fn merge(cs: (CategoryCell, CategoryCell)) -> CategoryCell {
+        let cc = wrap(Self::default());
+        {
+            let clos = |cat: &CategoryCell| {
+                for instance in &cat.borrow().instances {
+                    instance.borrow_mut().category = cc.clone();
+                }
+            };
+            clos(&cs.0);
+            clos(&cs.1);
+            let mut ccm = cc.borrow_mut();
+            ccm.instances.append(&mut cs.0.borrow_mut().instances);
+            ccm.instances.append(&mut cs.1.borrow_mut().instances);
+        }
+        cc
+    }
+}
+
+pointer_eq!(Category);
 
 struct Word {
     name: String,
     instances: Vec<InstanceCell>,
 }
+
+pointer_eq!(Word);

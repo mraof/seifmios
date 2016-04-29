@@ -9,3 +9,4 @@ license = "BSD-2-Clause"
 
 [dependencies]
 rand = "0.3.14"
+crossbeam = "0.2.9"
