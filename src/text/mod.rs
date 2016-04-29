@@ -239,14 +239,21 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     pub fn show_categories(&self) {
+        use std::collections::BTreeSet;
+        let mut set = BTreeSet::new();
         for message in &self.messages {
             for instance in &message.borrow().instances {
-                println!("Category:");
                 let ib = instance.borrow();
-                for instance in &ib.category.borrow().instances {
-                    let ib = instance.borrow();
-                    println!("\t{}", ib.word.borrow().name);
-                }
+                set.insert(&*ib.category.borrow() as *const Category);
+            }
+        }
+
+        for cat in set {
+            println!("Category:");
+            let catr = unsafe{&*cat};
+            for instance in &catr.instances {
+                let ib = instance.borrow();
+                println!("\t{}", ib.word.borrow().name);
             }
         }
     }
