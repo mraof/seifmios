@@ -230,9 +230,22 @@ impl<R: rand::Rng> Lexicon<R> {
             // Now that we have perfect matches, merge them into the same Category
             for ms in vones {
                 // We only want to combine if they aren't already in the same category
-                if ms.0.borrow().category != ms.0.borrow().category {
-                    Category::merge((ms.0.borrow().category.clone(),
-                        ms.0.borrow().category.clone()));
+                if ms.0.borrow().category != ms.1.borrow().category {
+                    let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
+                    Category::merge(cats);
+                }
+            }
+        }
+    }
+
+    pub fn show_categories(&self) {
+        for message in &self.messages {
+            for instance in &message.borrow().instances {
+                println!("Category:");
+                let ib = instance.borrow();
+                for instance in &ib.category.borrow().instances {
+                    let ib = instance.borrow();
+                    println!("\t{}", ib.word.borrow().name);
                 }
             }
         }
@@ -304,7 +317,7 @@ impl Category {
         let cc = wrap(Self::default());
         {
             let clos = |cat: &CategoryCell| {
-                for instance in &cat.borrow().instances {
+                for instance in cat.borrow().instances.iter().cloned() {
                     instance.borrow_mut().category = cc.clone();
                 }
             };
