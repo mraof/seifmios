@@ -225,7 +225,8 @@ impl<R: rand::Rng> Lexicon<R> {
         }
     }
 
-    pub fn show_categories(&self) {
+    /// Print all multiple categories and return the amount of categories total
+    pub fn show_categories(&self) -> usize {
         use std::collections::BTreeSet;
         let mut set = BTreeSet::new();
         for message in &self.messages {
@@ -235,14 +236,19 @@ impl<R: rand::Rng> Lexicon<R> {
             }
         }
 
+        let len = set.len();
+
         for cat in set {
-            println!("Category:");
             let catr = unsafe{&*cat};
-            for instance in &catr.instances {
-                let ib = instance.borrow();
-                println!("\t{}", ib.word.borrow().name);
+            if catr.instances.len() != 1 {
+                println!("Category:");
+                for instance in &catr.instances {
+                    let ib = instance.borrow();
+                    println!("\t{}", ib.word.borrow().name);
+                }
             }
         }
+        len
     }
 }
 
