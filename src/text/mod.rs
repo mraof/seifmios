@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::cell::Ref;
 use std::sync::mpsc::Receiver;
 
 use std::fmt;
@@ -14,7 +13,7 @@ use std::fmt;
 type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
 pub type SourceCell = Rc<RefCell<Source>>;
-type MessageCell = Rc<RefCell<Message>>;
+pub type MessageCell = Rc<RefCell<Message>>;
 type CategoryCell = Rc<RefCell<Category>>;
 type ConversationCell = Rc<RefCell<Conversation>>;
 type InstanceCell = Rc<RefCell<WordInstance>>;
@@ -306,7 +305,7 @@ struct WordInstance {
 
 pointer_eq!(WordInstance);
 
-struct Message {
+pub struct Message {
     author: AuthorCell,
     conversation: ConversationCell,
     index: usize,
