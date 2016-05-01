@@ -140,6 +140,9 @@ impl<R: rand::Rng> Lexicon<R> {
         // Increment the messages by 1 for the source
         source.borrow_mut().messages += 1;
 
+        // Learn the message immediately
+        self.learn(message);
+
         // TODO: Determine what to say back
         None
     }
@@ -198,31 +201,35 @@ impl<R: rand::Rng> Lexicon<R> {
                 None => break,
             };
 
-            // Vector of absolute perfect matches
-            let mut vones = Vec::new();
+            self.learn(message);
+        }
+    }
 
-            // Look through each word in the message
-            for word in &message.borrow().instances {
-                let borrow = word.borrow();
-                // Check each instance in that words instances
-                for instance in &borrow.word.borrow().instances {
-                    // Get the message for each instance
-                    let omessage = instance.borrow().message.clone();
-                    // Find what kind of matches exist between the messages
-                    if let Mismatch::One(best) =
-                        Message::category_and_word_mismatch((message.clone(), omessage.clone())) {
-                        vones.push(best);
-                    }
+    pub fn learn(&mut self, message: MessageCell) {
+        // Vector of absolute perfect matches
+        let mut vones = Vec::new();
+
+        // Look through each word in the message
+        for word in &message.borrow().instances {
+            let borrow = word.borrow();
+            // Check each instance in that words instances
+            for instance in &borrow.word.borrow().instances {
+                // Get the message for each instance
+                let omessage = instance.borrow().message.clone();
+                // Find what kind of matches exist between the messages
+                if let Mismatch::One(best) =
+                    Message::category_and_word_mismatch((message.clone(), omessage.clone())) {
+                    vones.push(best);
                 }
             }
+        }
 
-            // Now that we have perfect matches, merge them into the same Category
-            for ms in vones {
-                // We only want to combine if they aren't already in the same category
-                if ms.0.borrow().category != ms.1.borrow().category {
-                    let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
-                    Category::merge(cats);
-                }
+        // Now that we have perfect matches, merge them into the same Category
+        for ms in vones {
+            // We only want to combine if they aren't already in the same category
+            if ms.0.borrow().category != ms.1.borrow().category {
+                let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
+                Category::merge(cats);
             }
         }
     }
