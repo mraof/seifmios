@@ -166,16 +166,25 @@ impl<R: rand::Rng> Lexicon<R> {
 
         let bborrow = base.borrow();
 
-        Some(bborrow.instances.iter()
-            .map(|instance| instance.borrow().category.clone())
-            // TODO: Allow random choosing from co-category instances as well
-            .map(|category| self.rng.choose(&category.borrow().instances[..]).unwrap().clone())
-            .map(|instance| {
-                let ins = instance.borrow();
-                let word = ins.word.borrow();
-                word.name.clone()
-            })
-            .join(" "))
+        Some(format!("{} ~ {}",
+            bborrow.instances.iter()
+                .map(|instance| instance.borrow().category.clone())
+                // TODO: Allow random choosing from co-category instances as well
+                .map(|category| self.rng.choose(&category.borrow().instances[..]).unwrap().clone())
+                .map(|instance| {
+                    let ins = instance.borrow();
+                    let word = ins.word.borrow();
+                    word.name.clone()
+                })
+                .join(" "),
+            bborrow.instances.iter()
+                .map(|i| {
+                    let b = i.borrow();
+                    let b = b.word.borrow();
+                    b.name.clone()
+                })
+                .join(" "))
+        )
     }
 
     pub fn think(&mut self, end: Receiver<()>) {
