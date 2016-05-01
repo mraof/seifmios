@@ -4,6 +4,9 @@ extern crate crossbeam;
 use std::sync::mpsc::sync_channel;
 use std::thread;
 use std::time::Duration;
+use std::env::args;
+use std::fs::File;
+use std::io::{BufReader, BufRead};
 
 mod text;
 
@@ -13,9 +16,11 @@ fn main() {
         let mut lex = text::Lexicon::new(rand::Isaac64Rng::from_seed(&[1, 2, 3, 4]));
         let nowhere = lex.source("nowhere".to_string());
         let nobody = lex.author(nowhere.clone(), "nobody".to_string());
-        lex.tell(nowhere.clone(), nobody.clone(), "nothing is good".to_string());
-        lex.tell(nowhere.clone(), nobody.clone(), "everything is good".to_string());
-        lex.tell(nowhere.clone(), nobody.clone(), "nothing is bad".to_string());
+        for arg in args().skip(1) {
+            for line in BufReader::new(File::open(arg).ok().unwrap()).lines() {
+                lex.tell(nowhere.clone(), nobody.clone(), line.ok().unwrap());
+            }
+        }
         let (sender, receiver) = sync_channel(0);
         scope.spawn(move || {
             thread::sleep(Duration::from_millis(5000));
