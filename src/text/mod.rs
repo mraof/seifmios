@@ -9,6 +9,8 @@ use std::cell::RefCell;
 use std::cell::Ref;
 use std::sync::mpsc::Receiver;
 
+use std::fmt;
+
 type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
 pub type SourceCell = Rc<RefCell<Source>>;
@@ -244,7 +246,7 @@ impl<R: rand::Rng> Lexicon<R> {
                 println!("Category:");
                 for instance in &catr.instances {
                     let ib = instance.borrow();
-                    println!("\t{}", ib.word.borrow().name);
+                    println!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
                 }
             }
         }
@@ -305,6 +307,15 @@ struct Message {
 }
 
 impl Message {
+    fn string(&self) -> String {
+        self.instances.iter()
+            .map(|i| {
+                let b = i.borrow();
+                let b = b.word.borrow();
+                b.name.clone()
+            })
+            .join(" ")
+    }
     fn mismatch<F>(messages: (MessageCell, MessageCell), diff: F) -> Mismatch<(InstanceCell, InstanceCell)>
         where F: Fn((&WordInstance, &WordInstance)) -> bool
     {
@@ -348,6 +359,12 @@ impl Message {
     fn category_and_word_mismatch(messages: (MessageCell, MessageCell)) ->
         Mismatch<(InstanceCell, InstanceCell)> {
         Self::mismatch(messages, |ins| ins.0.word != ins.1.word && ins.0.category != ins.1.category)
+    }
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.string())
     }
 }
 
