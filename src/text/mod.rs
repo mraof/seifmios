@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::cell::Ref;
 use std::sync::mpsc::Receiver;
 
 type WordCell = Rc<RefCell<Word>>;
@@ -15,6 +16,15 @@ type MessageCell = Rc<RefCell<Message>>;
 type CategoryCell = Rc<RefCell<Category>>;
 type ConversationCell = Rc<RefCell<Conversation>>;
 type InstanceCell = Rc<RefCell<WordInstance>>;
+
+enum Mismatch<T> {
+    // Incompatible for matching or no mismatch (exactly the same)
+    None,
+    // Exactly one mismatch
+    One(T),
+    // Multiple mismatches
+    Multiple,
+}
 
 fn wrap<T>(t: T) -> Rc<RefCell<T>> {
     Rc::new(RefCell::new(t))
@@ -177,12 +187,6 @@ impl<R: rand::Rng> Lexicon<R> {
                 None => break,
             };
 
-            enum Amount<T> {
-                None,
-                One(T),
-                Multiple,
-            }
-
             // Vector of absolute perfect matches
             let mut vones = Vec::new();
 
@@ -193,36 +197,10 @@ impl<R: rand::Rng> Lexicon<R> {
                 for instance in &borrow.word.borrow().instances {
                     // Get the message for each instance
                     let omessage = instance.borrow().message.clone();
-                    // Make sure we dont get the same message twice and assure the same length
-                    if omessage != message &&
-                        omessage.borrow().instances.len() == message.borrow().instances.len() {
-                        // Find what kind of matches exist between the messages
-                        if let Amount::One(best) = message.borrow().instances.iter()
-                            .zip(omessage.borrow().instances.iter())
-                            .fold(Amount::None, |acc, ws| {
-                                let bs = (ws.0.borrow(), ws.1.borrow());
-                                match acc {
-                                    Amount::None => {
-                                        if bs.0.word.borrow().name !=
-                                            bs.1.word.borrow().name {
-                                            Amount::One((ws.0.clone(), ws.1.clone()))
-                                        } else {
-                                            Amount::None
-                                        }
-                                    },
-                                    Amount::One(best) => {
-                                        if bs.0.word.borrow().name !=
-                                            bs.1.word.borrow().name {
-                                            Amount::Multiple
-                                        } else {
-                                            Amount::One(best)
-                                        }
-                                    },
-                                    Amount::Multiple => Amount::Multiple,
-                                }
-                            }) {
-                            vones.push(best);
-                        }
+                    // Find what kind of matches exist between the messages
+                    if let Mismatch::One(best) =
+                        Message::category_and_word_mismatch((message.clone(), omessage.clone())) {
+                        vones.push(best);
                     }
                 }
             }
@@ -309,6 +287,53 @@ struct Message {
     conversation: ConversationCell,
     index: usize,
     instances: Vec<InstanceCell>,
+}
+
+impl Message {
+    fn mismatch<F>(messages: (MessageCell, MessageCell), diff: F) -> Mismatch<(InstanceCell, InstanceCell)>
+        where F: Fn((&WordInstance, &WordInstance)) -> bool
+    {
+        if messages.0 == messages.1 ||
+            messages.0.borrow().instances.len() != messages.1.borrow().instances.len() {
+            return Mismatch::None;
+        }
+        messages.0.borrow().instances.iter()
+            .zip(messages.1.borrow().instances.iter())
+            .fold(Mismatch::None, |acc, ws| {
+                let bs = (ws.0.borrow(), ws.1.borrow());
+                match acc {
+                    Mismatch::None => {
+                        if diff((&*bs.0, &*bs.1)) {
+                            Mismatch::One((ws.0.clone(), ws.1.clone()))
+                        } else {
+                            Mismatch::None
+                        }
+                    },
+                    Mismatch::One(best) => {
+                        if diff((&*bs.0, &*bs.1)) {
+                            Mismatch::Multiple
+                        } else {
+                            Mismatch::One(best)
+                        }
+                    },
+                    Mismatch::Multiple => Mismatch::Multiple,
+                }
+            })
+    }
+    /*fn category_mismatch(messages: (MessageCell, MessageCell)) ->
+        Mismatch<(InstanceCell, InstanceCell)> {
+        Self::mismatch(messages, |ins| ins.0.category != ins.1.category)
+    }
+
+    fn word_mismatch(messages: (MessageCell, MessageCell)) ->
+        Mismatch<(InstanceCell, InstanceCell)> {
+        Self::mismatch(messages, |ins| ins.0.word != ins.1.word)
+    }*/
+
+    fn category_and_word_mismatch(messages: (MessageCell, MessageCell)) ->
+        Mismatch<(InstanceCell, InstanceCell)> {
+        Self::mismatch(messages, |ins| ins.0.word != ins.1.word && ins.0.category != ins.1.category)
+    }
 }
 
 pointer_eq!(Message);
