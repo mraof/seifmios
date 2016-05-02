@@ -6,7 +6,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::sync::mpsc::Receiver;
 use std::cmp;
 
 use std::fmt;
@@ -221,31 +220,29 @@ impl<R: rand::Rng> Lexicon<R> {
         )
     }
 
-    pub fn think(&mut self, end: Receiver<()>) {
-        use std::sync::mpsc::TryRecvError::Empty;
-        while end.try_recv() == Err(Empty) {
-            // Learn a random message if there are some
-            let m = match self.rng.choose(&self.messages[..]) {
-                Some(m) => m.clone(),
-                None => break,
-            };
+    /// Thinks one iteration
+    pub fn think(&mut self) {
+        // Learn a random message if there are some
+        let m = match self.rng.choose(&self.messages[..]) {
+            Some(m) => m.clone(),
+            None => return,
+        };
 
-            self.learn(m);
+        self.learn(m);
 
-            // Get two random categories (we already know messages exist from above)
-            Category::cocategorize((
-                {
-                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-                {
-                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-            ));
-        }
+        // Get two random categories (we already know messages exist from above)
+        Category::cocategorize((
+            {
+                let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                b.category.clone()
+            },
+            {
+                let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                b.category.clone()
+            },
+        ));
     }
 
     pub fn learn(&mut self, message: MessageCell) {

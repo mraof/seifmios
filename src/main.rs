@@ -21,7 +21,9 @@ fn main() {
             thread::sleep(Duration::from_millis(5000));
             sender.send(()).ok().unwrap();
         });
-        lex.think(receiver);
+        while let Err(_) = receiver.try_recv() {
+            lex.think();
+        }
         lex.show_categories();
         for _ in 0..32 {
             println!("lex says: {}", lex.initiate(nowhere.clone()).unwrap());
