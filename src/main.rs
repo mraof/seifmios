@@ -33,8 +33,11 @@ fn main() {
         let nobody = lex.author(nowhere.clone(), "nobody".to_string());
         println!("Loading file to lexicon...");
         for arg in args().skip(1) {
-            for line in BufReader::new(File::open(arg).ok().unwrap()).lines() {
+            for (index, line) in BufReader::new(File::open(arg.clone()).ok().unwrap()).lines().enumerate() {
                 lex.tell(nowhere.clone(), nobody.clone(), line.ok().unwrap());
+                if index % 10000 == 0 {
+                    println!("On line {} of {}", index, arg);
+                }
             }
         }
         println!("Finished adding file to lexicon.");
