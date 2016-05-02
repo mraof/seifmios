@@ -85,7 +85,7 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Tell a message to the lexicon and potentially get a response back.
-    pub fn tell(&mut self, source: SourceCell, author: AuthorCell, content: String) -> Option<String> {
+    pub fn tell(&mut self, source: SourceCell, author: AuthorCell, content: String) {
         let conversation = match self.active_conversations.entry(&*source.borrow() as *const Source) {
             Entry::Vacant(v) => {
                 let c = wrap(Conversation{
@@ -146,13 +146,10 @@ impl<R: rand::Rng> Lexicon<R> {
 
         // Learn the message immediately
         self.learn(message);
-
-        // TODO: Determine what to say back
-        None
     }
 
-    /// Have seifmios attempt to initiate a conversation at a source, but it may fail.
-    pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
+    /// Switch conversations
+    pub fn switch(&mut self, source: SourceCell) {
         let conversation = wrap(Conversation{
             source: source.clone(),
             messages: Vec::new(),
@@ -168,7 +165,10 @@ impl<R: rand::Rng> Lexicon<R> {
         };
 
         self.conversations.push(conversation.clone());
+    }
 
+    /// Say something based on the conversation context
+    pub fn respond(&mut self, source: SourceCell) -> Option<String> {
         let base = match self.rng.choose(&self.messages[..]) {
             Some(m) => m.clone(),
             None => return None,
@@ -218,6 +218,12 @@ impl<R: rand::Rng> Lexicon<R> {
                 })
                 .join(" ")
         )
+    }
+
+    /// Have seifmios attempt to initiate a conversation at a source, but it may fail.
+    pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
+        self.switch(source.clone());
+        self.respond(source)
     }
 
     /// Thinks one iteration
