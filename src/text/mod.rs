@@ -394,8 +394,10 @@ impl WordInstance {
         let ms = (bs.0.message.borrow(), bs.1.message.borrow());
         for i in 1.. {
             let msins = (
-                (ms.0.instances.get(bs.0.index - i), ms.1.instances.get(bs.1.index - i)),
-                (ms.0.instances.get(bs.0.index + i), ms.1.instances.get(bs.1.index + i))
+                (ms.0.instances.get((bs.0.index as isize - i) as usize),
+                    ms.1.instances.get((bs.1.index as isize - i) as usize)),
+                (ms.0.instances.get((bs.0.index as isize + i) as usize),
+                    ms.1.instances.get((bs.1.index as isize + i) as usize))
             );
 
             match msins.0 {
@@ -405,7 +407,7 @@ impl WordInstance {
                     if !Category::are_cocategories((&i0.borrow().category, &i1.borrow().category))
                         && i0.borrow().word != i1.borrow().word {
                         // The coincidence level doesn't go this far
-                        return i-1;
+                        return (i - 1) as usize;
                     }
                 },
                 // The sentence ends in both spots
@@ -418,22 +420,22 @@ impl WordInstance {
                                 (&i0.borrow().category, &i1.borrow().category))
                                 && i0.borrow().word != i1.borrow().word {
                                 // The coincidence level doesn't go this far
-                                return i-1;
+                                return (i - 1) as usize;
                             }
                         },
                         (None, None) => {
                             // We can't go any further on either side, so this is the coincidence
-                            return i;
+                            return i as usize;
                         },
                         _ => {
                             // Any combination of Some and None is a mismatch
-                            return i-1;
+                            return (i - 1) as usize;
                         }
                     }
                 }
                 _ => {
                     // Any combination of Some and None is a mismatch
-                    return i-1;
+                    return (i - 1) as usize;
                 }
             }
         }
