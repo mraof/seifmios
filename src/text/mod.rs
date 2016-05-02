@@ -531,6 +531,8 @@ impl Category {
             ccm.instances.append(&mut cs.0.borrow_mut().instances);
             ccm.instances.append(&mut cs.1.borrow_mut().instances);
         }
+        // TODO: Save all the cocategories from before and cocategorize them with this category
+        // except for the categories we just removed of course
         cc
     }
 
