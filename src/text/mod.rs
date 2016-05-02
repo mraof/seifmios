@@ -2,21 +2,24 @@ extern crate rand;
 extern crate itertools;
 use self::itertools::Itertools;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::mpsc::Receiver;
+use std::cmp;
 
 use std::fmt;
 
-type WordCell = Rc<RefCell<Word>>;
+const RATIO_TO_COCATEGORIZE: f64 = 0.8;
+
+pub type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
 pub type SourceCell = Rc<RefCell<Source>>;
 pub type MessageCell = Rc<RefCell<Message>>;
-type CategoryCell = Rc<RefCell<Category>>;
-type ConversationCell = Rc<RefCell<Conversation>>;
-type InstanceCell = Rc<RefCell<WordInstance>>;
+pub type CategoryCell = Rc<RefCell<Category>>;
+pub type ConversationCell = Rc<RefCell<Conversation>>;
+pub type InstanceCell = Rc<RefCell<WordInstance>>;
 
 enum Mismatch<T> {
     // Incompatible for matching or no mismatch (exactly the same)
@@ -31,8 +34,6 @@ fn wrap<T>(t: T) -> Rc<RefCell<T>> {
     Rc::new(RefCell::new(t))
 }
 
-// const RATIO_CONTAINED_BEFORE_COMBINATION: f64 = 0.8;
-
 #[derive(Default)]
 pub struct Lexicon<R: rand::Rng> {
     rng: R,
@@ -45,6 +46,7 @@ pub struct Lexicon<R: rand::Rng> {
 }
 
 impl<R: rand::Rng> Lexicon<R> {
+    /// Make a new lexion. It needs its own Rng for internal purposes of learning.
     pub fn new(rng: R) -> Lexicon<R> {
         Lexicon{
             rng: rng,
@@ -56,6 +58,7 @@ impl<R: rand::Rng> Lexicon<R> {
         }
     }
 
+    /// Get a source by its unique name.
     pub fn source(&mut self, name: String) -> SourceCell {
         match self.sources.entry(name.clone()) {
             Entry::Vacant(v) => v.insert(wrap(Source{
@@ -67,6 +70,7 @@ impl<R: rand::Rng> Lexicon<R> {
         }
     }
 
+    /// Get an author identifier from a particular source.
     pub fn author(&mut self, source: SourceCell, name: String) -> AuthorCell {
         match source.borrow_mut().authors.entry(name.clone()) {
             Entry::Vacant(v) => {
@@ -80,6 +84,8 @@ impl<R: rand::Rng> Lexicon<R> {
             Entry::Occupied(o) => o.get().clone(),
         }
     }
+
+    /// Tell a message to the lexicon and potentially get a response back.
     pub fn tell(&mut self, source: SourceCell, author: AuthorCell, content: String) -> Option<String> {
         let conversation = match self.active_conversations.entry(&*source.borrow() as *const Source) {
             Entry::Vacant(v) => {
@@ -146,6 +152,7 @@ impl<R: rand::Rng> Lexicon<R> {
         None
     }
 
+    /// Have seifmios attempt to initiate a conversation at a source, but it may fail.
     pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
         let conversation = wrap(Conversation{
             source: source.clone(),
@@ -170,37 +177,74 @@ impl<R: rand::Rng> Lexicon<R> {
 
         let bborrow = base.borrow();
 
-        Some(format!("{} ~ {}",
+        Some(
             bborrow.instances.iter()
                 .map(|instance| instance.borrow().category.clone())
                 // TODO: Allow random choosing from co-category instances as well
-                .map(|category| self.rng.choose(&category.borrow().instances[..]).unwrap().clone())
+                .map(|category| {
+                    let b = category.borrow();
+                    // Find the count of how many word instances exist total
+                    let mut count = b.instances.len();
+                    for cocategory in &b.cocategories {
+                        count += cocategory.borrow().instances.len();
+                    }
+                    // Generate an index based on the count
+                    let mut i = self.rng.gen_range(0, count);
+                    match b.instances.get(i) {
+                        // It was in the original category
+                        Some(ins) => ins.clone(),
+                        // It was in a cocategory
+                        None => {
+                            // Subtract the cocategory length from the index
+                            i -= b.instances.len();
+                            for cocategory in &b.cocategories {
+                                let b = cocategory.borrow();
+                                // If it was in this category
+                                if let Some(ins) = b.instances.get(i) {
+                                    // Clone the instance and return it
+                                    return ins.clone();
+                                }
+                                // Otherwise subtract by the amount of instances in this cocategory
+                                i -= b.instances.len();
+                            }
+                            // The index should point to some category, so this is unreachable
+                            unreachable!();
+                        },
+                    }
+                })
                 .map(|instance| {
                     let ins = instance.borrow();
                     let word = ins.word.borrow();
                     word.name.clone()
                 })
-                .join(" "),
-            bborrow.instances.iter()
-                .map(|i| {
-                    let b = i.borrow();
-                    let b = b.word.borrow();
-                    b.name.clone()
-                })
-                .join(" "))
+                .join(" ")
         )
     }
 
     pub fn think(&mut self, end: Receiver<()>) {
         use std::sync::mpsc::TryRecvError::Empty;
         while end.try_recv() == Err(Empty) {
-            // Choose a random message or break if there are none
-            let message = match self.rng.choose(&self.messages[..]) {
+            // Learn a random message if there are some
+            let m = match self.rng.choose(&self.messages[..]) {
                 Some(m) => m.clone(),
                 None => break,
             };
 
-            self.learn(message);
+            self.learn(m);
+
+            // Get two random categories (we already know messages exist from above)
+            Category::cocategorize((
+                {
+                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+                {
+                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+            ));
         }
     }
 
@@ -235,7 +279,6 @@ impl<R: rand::Rng> Lexicon<R> {
 
     /// Print all multiple categories and return the amount of categories total
     pub fn show_categories(&self) -> usize {
-        use std::collections::BTreeSet;
         let mut set = BTreeSet::new();
         for message in &self.messages {
             for instance in &message.borrow().instances {
@@ -250,6 +293,14 @@ impl<R: rand::Rng> Lexicon<R> {
             let catr = unsafe{&*cat};
             if catr.instances.len() != 1 {
                 println!("Category:");
+                for cocategory in &catr.cocategories {
+                    println!("\tCocategory:");
+                    let catr = cocategory.borrow();
+                    for instance in &catr.instances {
+                        let ib = instance.borrow();
+                        println!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
+                    }
+                }
                 for instance in &catr.instances {
                     let ib = instance.borrow();
                     println!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
@@ -260,8 +311,9 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 }
 
-macro_rules! pointer_eq {
+macro_rules! pointer_ord {
     ($s:ident) => {
+        // Implement on the type
         impl PartialEq for $s {
             fn eq(&self, other: &Self) -> bool {
                 self as *const Self == other as *const Self
@@ -271,22 +323,52 @@ macro_rules! pointer_eq {
                 self as *const Self != other as *const Self
             }
         }
+
+        impl Eq for $s {}
+
+        impl PartialOrd for $s {
+            fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+                (self as *const Self).partial_cmp(&(other as *const Self))
+            }
+
+            fn lt(&self, other: &Self) -> bool {
+                (self as *const Self) < (other as *const Self)
+            }
+
+            fn le(&self, other: &Self) -> bool {
+                self as *const Self <= other as *const Self
+            }
+
+            fn gt(&self, other: &Self) -> bool {
+                self as *const Self > other as *const Self
+            }
+
+            fn ge(&self, other: &Self) -> bool {
+                self as *const Self >= other as *const Self
+            }
+        }
+
+        impl Ord for $s {
+            fn cmp(&self, other: &Self) -> cmp::Ordering {
+                (self as *const Self).cmp(&(other as *const Self))
+            }
+        }
     };
 }
 
-struct Conversation {
+pub struct Conversation {
     source: SourceCell,
     messages: Vec<MessageCell>,
 }
 
-pointer_eq!(Conversation);
+pointer_ord!(Conversation);
 
 pub struct Author {
     source: SourceCell,
     name: String,
 }
 
-pointer_eq!(Author);
+pointer_ord!(Author);
 
 pub struct Source {
     name: String,
@@ -294,16 +376,68 @@ pub struct Source {
     authors: BTreeMap<String, AuthorCell>,
 }
 
-pointer_eq!(Source);
+pointer_ord!(Source);
 
-struct WordInstance {
+pub struct WordInstance {
     word: WordCell,
     category: CategoryCell,
     message: MessageCell,
     index: usize,
 }
 
-pointer_eq!(WordInstance);
+impl WordInstance {
+    fn coincidence_level(ins: (&InstanceCell, &InstanceCell)) -> usize {
+        let bs = (ins.0.borrow(), ins.1.borrow());
+        let ms = (bs.0.message.borrow(), bs.1.message.borrow());
+        for i in 1.. {
+            let msins = (
+                (ms.0.instances.get(bs.0.index - i), ms.1.instances.get(bs.1.index - i)),
+                (ms.0.instances.get(bs.0.index + i), ms.1.instances.get(bs.1.index + i))
+            );
+
+            match msins.0 {
+                // There are two words
+                (Some(i0), Some(i1)) => {
+                    // If both the categories and words don't match
+                    if i0.borrow().category != i1.borrow().category
+                        && i0.borrow().word != i1.borrow().word {
+                        // The coincidence level doesn't go this far
+                        return i-1;
+                    }
+                },
+                // The sentence ends in both spots
+                (None, None) => {
+                    // We can't go any further, but we also need to check the right instances
+                    match msins.1 {
+                        (Some(i0), Some(i1)) => {
+                            // If both the categories and words don't match
+                            if i0.borrow().category != i1.borrow().category
+                                && i0.borrow().word != i1.borrow().word {
+                                // The coincidence level doesn't go this far
+                                return i-1;
+                            }
+                        },
+                        (None, None) => {
+                            // We can't go any further on either side, so this is the coincidence
+                            return i;
+                        },
+                        _ => {
+                            // Any combination of Some and None is a mismatch
+                            return i-1;
+                        }
+                    }
+                }
+                _ => {
+                    // Any combination of Some and None is a mismatch
+                    return i-1;
+                }
+            }
+        }
+        unreachable!();
+    }
+}
+
+pointer_ord!(WordInstance);
 
 pub struct Message {
     author: AuthorCell,
@@ -374,10 +508,10 @@ impl fmt::Display for Message {
     }
 }
 
-pointer_eq!(Message);
+pointer_ord!(Message);
 
 #[derive(Default)]
-struct Category {
+pub struct Category {
     instances: Vec<InstanceCell>,
     cocategories: Vec<CategoryCell>,
 }
@@ -399,13 +533,79 @@ impl Category {
         }
         cc
     }
+
+    /// Determine if the categories should be cocategories
+    fn cocategorize(cs: (CategoryCell, CategoryCell)) {
+        // First, check to see if they are the same category
+        if cs.0 == cs.1 {
+            // Nothing to do in that case
+            return;
+        }
+
+        // Get the total amount of instances in cs.0
+        let total = cs.0.borrow().instances.len();
+        // Make a counter to see how many instances coincide
+        let mut coincidences = 0;
+
+        // Look through all the instances between both categories
+        {
+            let bs = (cs.0.borrow(), cs.1.borrow());
+            for i0 in bs.0.instances.iter() {
+                // We see if there is any coincidence for this instance
+                for i1 in bs.1.instances.iter() {
+                    // It is impossible for two different categories to contain the same instance,
+                    // so that doesn't need to be checked for.
+
+                    // TODO: Look behind and ahead by more than just 1 instance
+                    // Check if the coincidence level is at least 1 (for now)
+                    if WordInstance::coincidence_level((i0, i1)) >= 1 {
+                        // Increment the amount of coincidences
+                        coincidences += 1;
+                        // Break so we dont count any more
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If the amount of coincidences is sufficient enough
+        if coincidences as f64 / total as f64 > RATIO_TO_COCATEGORIZE {
+            // Make these cocategories
+
+            // Check if they are already cocategories
+            if cs.0.borrow().cocategories.contains(&cs.1) {
+                // Then we are done
+                return;
+            }
+
+            // Add it
+            cs.0.borrow_mut().cocategories.push(cs.1.clone());
+            cs.1.borrow_mut().cocategories.push(cs.0.clone());
+        } else {
+            // Unmake these cocategories
+
+            // Find position in vector of cocategories
+            let csp0 = cs.0.borrow().cocategories.iter().position(|i| *i == cs.1);
+            // If it wasnt found
+            if csp0.is_none() {
+                // Then we are done
+                return;
+            }
+            let csp1 = cs.1.borrow().cocategories.iter().position(|i| *i == cs.0);
+
+            // Remove it
+            cs.0.borrow_mut().cocategories.swap_remove(csp0.unwrap());
+            // In the case this panics, two cocategories didnt contain each other (bad stuff!)
+            cs.1.borrow_mut().cocategories.swap_remove(csp1.unwrap());
+        }
+    }
 }
 
-pointer_eq!(Category);
+pointer_ord!(Category);
 
-struct Word {
+pub struct Word {
     name: String,
     instances: Vec<InstanceCell>,
 }
 
-pointer_eq!(Word);
+pointer_ord!(Word);
