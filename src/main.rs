@@ -42,17 +42,19 @@ fn main() {
         }
         println!("Finished adding file to lexicon.");
         println!("Starting learning process.");
-        let (sender, receiver) = sync_channel(0);
-        scope.spawn(move || {
-            pause("Press any key to finish learning and print sample information...");
-            sender.send(()).ok().unwrap();
-        });
-        while let Err(_) = receiver.try_recv() {
-            lex.think();
-        }
-        lex.show_categories();
-        for _ in 0..32 {
-            println!("lex says: {}", lex.initiate(nowhere.clone()).unwrap());
+        loop {
+            let (sender, receiver) = sync_channel(0);
+            scope.spawn(move || {
+                pause("Press any key to finish learning and print sample information...");
+                sender.send(()).ok().unwrap();
+            });
+            while let Err(_) = receiver.try_recv() {
+                lex.think();
+            }
+            lex.show_categories();
+            for _ in 0..32 {
+                println!("lex says: {}", lex.initiate(nowhere.clone()).unwrap());
+            }
         }
     });
 }
