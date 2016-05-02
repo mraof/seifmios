@@ -37,7 +37,6 @@ fn main() {
                 lex.tell(nowhere.clone(), nobody.clone(), line.ok().unwrap());
             }
         }
-        chat::connect(&mut lex);
         println!("Finished adding file to lexicon.");
         println!("Starting learning process.");
         let (sender, receiver) = sync_channel(0);
