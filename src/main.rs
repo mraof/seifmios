@@ -43,7 +43,9 @@ fn main() {
             pause("Press any key to finish learning and print sample information...");
             sender.send(()).ok().unwrap();
         });
-        lex.think(receiver);
+        while let Err(_) = receiver.try_recv() {
+            lex.think();
+        }
         lex.show_categories();
         for _ in 0..32 {
             println!("lex says: {}", lex.initiate(nowhere.clone()).unwrap());
