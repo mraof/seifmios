@@ -2,6 +2,7 @@ extern crate rand;
 extern crate crossbeam;
 
 use std::sync::mpsc::sync_channel;
+use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
 use std::env::args;
@@ -9,6 +10,7 @@ use std::fs::File;
 use std::io::{BufReader, BufRead};
 
 mod text;
+mod chat;
 
 fn main() {
     crossbeam::scope(|scope| {
@@ -21,6 +23,7 @@ fn main() {
                 lex.tell(nowhere.clone(), nobody.clone(), line.ok().unwrap());
             }
         }
+        chat::connect(&mut lex);
         let (sender, receiver) = sync_channel(0);
         scope.spawn(move || {
             thread::sleep(Duration::from_millis(5000));
