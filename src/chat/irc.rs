@@ -14,7 +14,7 @@ pub fn connect<R: rand::Rng>(name: &str, lex: &mut text::Lexicon<R>)
         print!("{:?}", message);
         match message.command {
             Command::PRIVMSG(target, msg) => {
-                if(msg == "!quit")
+                if msg == "!quit"
                 {
                     server.send_quit("Quitting").unwrap();
                 }
