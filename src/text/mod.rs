@@ -396,7 +396,7 @@ impl WordInstance {
                 // There are two words
                 (Some(i0), Some(i1)) => {
                     // If both the categories and words don't match
-                    if i0.borrow().category != i1.borrow().category
+                    if !Category::are_cocategories((&i0.borrow().category, &i1.borrow().category))
                         && i0.borrow().word != i1.borrow().word {
                         // The coincidence level doesn't go this far
                         return i-1;
@@ -408,7 +408,8 @@ impl WordInstance {
                     match msins.1 {
                         (Some(i0), Some(i1)) => {
                             // If both the categories and words don't match
-                            if i0.borrow().category != i1.borrow().category
+                            if !Category::are_cocategories(
+                                (&i0.borrow().category, &i1.borrow().category))
                                 && i0.borrow().word != i1.borrow().word {
                                 // The coincidence level doesn't go this far
                                 return i-1;
@@ -596,6 +597,15 @@ impl Category {
             cs.0.borrow_mut().cocategories.swap_remove(csp0.unwrap());
             // In the case this panics, two cocategories didnt contain each other (bad stuff!)
             cs.1.borrow_mut().cocategories.swap_remove(csp1.unwrap());
+        }
+    }
+
+    fn are_cocategories(cs: (&CategoryCell, &CategoryCell)) -> bool {
+        // If they are the same category they are cocategories
+        if cs.0 == cs.1 {
+            true
+        } else {
+            cs.0.borrow().cocategories.contains(&cs.1)
         }
     }
 }
