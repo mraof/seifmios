@@ -579,14 +579,14 @@ impl Category {
         }
 
         // Get the total amount of instances in cs.0
-        let total = cs.0.borrow().instances.len() * cs.1.borrow().instances.len();
+        // let total = cs.0.borrow().instances.len() * cs.1.borrow().instances.len();
         // Make a counter to see how many instances coincide
-        let mut coincidences = 0;
+        let mut coincidence = false;
 
         // Look through all the instances between both categories
         {
             let bs = (cs.0.borrow(), cs.1.borrow());
-            for i0 in bs.0.instances.iter() {
+            'outer: for i0 in bs.0.instances.iter() {
                 // We see if there is any coincidence for this instance
                 for i1 in bs.1.instances.iter() {
                     // It is impossible for two different categories to contain the same instance,
@@ -596,14 +596,18 @@ impl Category {
                     // Check if the coincidence level is at least 1 (for now)
                     if WordInstance::coincidence_level((i0, i1)) >= 1 {
                         // Increment the amount of coincidences
-                        coincidences += 1;
+                        coincidence = true;
+                        break 'outer;
                     }
                 }
             }
         }
 
         // If the amount of coincidences is sufficient enough
-        if coincidences as f64 / total as f64 > RATIO_TO_COCATEGORIZE {
+        // if coincidences as f64 / total as f64 > RATIO_TO_COCATEGORIZE {
+
+        // If we have just one coincidence
+        if coincidence {
             // Make these cocategories
 
             // Check if they are already cocategories
