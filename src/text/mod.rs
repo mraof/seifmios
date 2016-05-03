@@ -10,7 +10,7 @@ use std::cmp;
 
 use std::fmt;
 
-const RATIO_TO_COCATEGORIZE: f64 = 0.45;
+const RATIO_TO_COCATEGORIZE: f64 = 0.2;
 
 pub type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
@@ -551,7 +551,7 @@ impl Category {
         }
 
         // Get the total amount of instances in cs.0
-        let total = cs.0.borrow().instances.len();
+        let total = cs.0.borrow().instances.len() * cs.1.borrow().instances.len();
         // Make a counter to see how many instances coincide
         let mut coincidences = 0;
 
@@ -569,8 +569,6 @@ impl Category {
                     if WordInstance::coincidence_level((i0, i1)) >= 1 {
                         // Increment the amount of coincidences
                         coincidences += 1;
-                        // Break so we dont count any more
-                        break;
                     }
                 }
             }
