@@ -1,3 +1,6 @@
+#![feature(custom_derive, plugin)]
+#![plugin(serde_macros)]
+extern crate serde;
 extern crate rand;
 extern crate crossbeam;
 
@@ -19,17 +22,16 @@ fn main() {
         lex.tell(nowhere.clone(), nobody.clone(), "everything is good".to_string());
         lex.tell(nowhere.clone(), nobody.clone(), "nothing is bad".to_string());
         let (sender, receiver) = channel();
-        scope.spawn(move || {
-            chat::connect(sender);
-        });
+        chat::connect(scope, sender);
 
-        while let Ok((source, author, message, reply_sender)) = receiver.recv() {
-            let source = lex.source(source);
-            let author = lex.author(source.clone(), author);
-            lex.tell(source.clone(), author.clone(), message);
-            if let Some(reply_sender) = reply_sender {
+        while let Ok(tuple) = receiver.recv() {
+            let chat_message = tuple.0;
+            let source = lex.source(chat_message.source);
+            let author = lex.author(source.clone(), chat_message.author);
+            lex.tell(source.clone(), author.clone(), chat_message.message);
+            if let Some(reply_sender) = tuple.1 {
                 let reply = lex.initiate(source).unwrap();
-                reply_sender.send(reply);
+                reply_sender.send(reply).unwrap();
             }
         }
 

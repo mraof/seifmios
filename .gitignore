@@ -13,3 +13,7 @@
 #IntelliJ IDEA
 /.idea
 /seifmios.iml
+
+#Contains login information
+/config/discord.json
+
