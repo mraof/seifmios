@@ -10,7 +10,7 @@ use std::cmp;
 
 use std::fmt;
 
-const RATIO_TO_COCATEGORIZE: f64 = 0.2;
+const RATIO_TO_COCATEGORIZE: f64 = 0.05;
 
 pub type WordCell = Rc<RefCell<Word>>;
 pub type AuthorCell = Rc<RefCell<Author>>;
