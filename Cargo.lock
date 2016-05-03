@@ -3,6 +3,7 @@ name = "seifmios"
 version = "0.0.0"
 dependencies = [
  "crossbeam 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "either 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -10,6 +11,11 @@ dependencies = [
 [[package]]
 name = "crossbeam"
 version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "either"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
