@@ -33,6 +33,23 @@ fn wrap<T>(t: T) -> Rc<RefCell<T>> {
     Rc::new(RefCell::new(t))
 }
 
+#[derive(Deserialize, Serialize)]
+struct SerialLexicon {
+    words: BTreeMap<String, u64>,
+    sources: BTreeMap<String, u64>,
+    conversations: Vec<u64>,
+    messages: Vec<u64>,
+
+    // Maps to look things up by unique ID
+    conversation_map: BTreeMap<u64, SerialConversation>,
+    author_map: BTreeMap<u64, SerialAuthor>,
+    source_map: BTreeMap<u64, SerialSource>,
+    word_instance_map: BTreeMap<u64, SerialWordInstance>,
+    message_map: BTreeMap<u64, SerialMessage>,
+    category_map: BTreeMap<u64, SerialCategory>,
+    word_map: BTreeMap<u64, SerialWord>,
+}
+
 #[derive(Default)]
 pub struct Lexicon<R: rand::Rng> {
     rng: R,
@@ -364,10 +381,22 @@ pub struct Conversation {
     messages: Vec<MessageCell>,
 }
 
+#[derive(Deserialize, Serialize)]
+struct SerialConversation {
+    source: u64,
+    messages: Vec<u64>,
+}
+
 pointer_ord!(Conversation);
 
 pub struct Author {
     source: SourceCell,
+    name: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SerialAuthor {
+    source: u64,
     name: String,
 }
 
@@ -379,6 +408,13 @@ pub struct Source {
     authors: BTreeMap<String, AuthorCell>,
 }
 
+#[derive(Deserialize, Serialize)]
+struct SerialSource {
+    name: String,
+    messages: u64,
+    authors: BTreeMap<String, u64>,
+}
+
 pointer_ord!(Source);
 
 pub struct WordInstance {
@@ -386,6 +422,14 @@ pub struct WordInstance {
     category: CategoryCell,
     message: MessageCell,
     index: usize,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SerialWordInstance {
+    word: u64,
+    category: u64,
+    message: u64,
+    index: u64,
 }
 
 impl WordInstance {
@@ -480,6 +524,14 @@ pub struct Message {
     instances: Vec<InstanceCell>,
 }
 
+#[derive(Deserialize, Serialize)]
+struct SerialMessage {
+    author: u64,
+    conversation: u64,
+    index: u64,
+    instances: Vec<u64>,
+}
+
 impl Message {
     fn string(&self) -> String {
         self.instances.iter()
@@ -548,6 +600,12 @@ pointer_ord!(Message);
 pub struct Category {
     instances: Vec<InstanceCell>,
     cocategories: Vec<CategoryCell>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SerialCategory {
+    instances: Vec<u64>,
+    cocategories: Vec<u64>,
 }
 
 impl Category {
@@ -654,6 +712,12 @@ pointer_ord!(Category);
 pub struct Word {
     name: String,
     instances: Vec<InstanceCell>,
+}
+
+#[derive(Deserialize, Serialize)]
+struct SerialWord {
+    name: String,
+    instances: Vec<u64>,
 }
 
 pointer_ord!(Word);
