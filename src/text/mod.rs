@@ -49,7 +49,7 @@ pub struct Lexicon<R: Rng> {
     active_conversations: BTreeMap<*const Source, ConversationCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 pub struct SerialLexicon {
     words: BTreeMap<String, u64>,
     sources: BTreeMap<String, u64>,
@@ -57,13 +57,13 @@ pub struct SerialLexicon {
     messages: Vec<u64>,
 
     // Maps to look things up by unique ID
-    conversation_map: BTreeMap<u64, SerialConversation>,
-    author_map: BTreeMap<u64, SerialAuthor>,
-    source_map: BTreeMap<u64, SerialSource>,
-    word_instance_map: BTreeMap<u64, SerialWordInstance>,
-    message_map: BTreeMap<u64, SerialMessage>,
-    category_map: BTreeMap<u64, SerialCategory>,
-    word_map: BTreeMap<u64, SerialWord>,
+    conversation_vec: Vec<SerialConversation>,
+    author_vec: Vec<SerialAuthor>,
+    source_vec: Vec<SerialSource>,
+    word_instance_vec: Vec<SerialWordInstance>,
+    message_vec: Vec<SerialMessage>,
+    category_vec: Vec<SerialCategory>,
+    word_vec: Vec<SerialWord>,
 }
 
 pub struct Conversation {
@@ -71,7 +71,7 @@ pub struct Conversation {
     messages: Vec<MessageCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialConversation {
     source: u64,
     messages: Vec<u64>,
@@ -82,7 +82,7 @@ pub struct Author {
     name: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialAuthor {
     source: u64,
     name: String,
@@ -94,7 +94,7 @@ pub struct Source {
     authors: BTreeMap<String, AuthorCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialSource {
     name: String,
     messages: u64,
@@ -108,7 +108,7 @@ pub struct WordInstance {
     index: usize,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialWordInstance {
     word: u64,
     category: u64,
@@ -123,7 +123,7 @@ pub struct Message {
     instances: Vec<InstanceCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialMessage {
     author: u64,
     conversation: u64,
@@ -137,7 +137,7 @@ pub struct Category {
     cocategories: Vec<CategoryCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialCategory {
     instances: Vec<u64>,
     cocategories: Vec<u64>,
@@ -148,7 +148,7 @@ pub struct Word {
     instances: Vec<InstanceCell>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default)]
 struct SerialWord {
     name: String,
     instances: Vec<u64>,

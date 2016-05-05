@@ -2,10 +2,22 @@ extern crate rand;
 extern crate itertools;
 use self::itertools::Itertools;
 use super::*;
-use super::wrap;
+use super::{
+    wrap,
+    SerialAuthor,
+    SerialCategory,
+    SerialConversation,
+    SerialMessage,
+    SerialSource,
+    SerialWord,
+    SerialWordInstance,
+};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
+
+use std::rc::Rc;
+use std::cell::RefCell;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
@@ -274,5 +286,73 @@ impl<R: rand::Rng> Lexicon<R> {
             }
         }
         len
+    }
+
+    /// Turn the lexicon into its serial form for serilization
+    pub fn serial_form(&self) -> SerialLexicon {
+        let mut helper = SerialHelper::default();
+        helper.lex
+    }
+}
+
+#[derive(Default)]
+struct SerialHelper {
+    lex: SerialLexicon,
+    conversations: BTreeMap<*const Conversation, u64>,
+    authors: BTreeMap<*const Author, u64>,
+    sources: BTreeMap<*const Source, u64>,
+    word_instances: BTreeMap<*const WordInstance, u64>,
+    messages: BTreeMap<*const Message, u64>,
+    categories: BTreeMap<*const Category, u64>,
+    words: BTreeMap<*const Word, u64>,
+}
+
+fn asptr<T>(t: &Rc<RefCell<T>>) -> *const T {
+    &*t.borrow() as *const T
+}
+
+impl SerialHelper {
+    fn add_word(&mut self, word: &WordCell) {
+        let uid = self.get_word(word);
+        if self.lex.words.insert(word.borrow().name.clone(), uid).is_some() {
+            panic!("Error: Improper internal usage of SerialHelper.");
+        }
+    }
+
+    fn get_conversation(&mut self, conversation: &ConversationCell) -> u64 {
+        match self.conversations.entry(asptr(conversation)) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.conversation_vec.len() as u64;
+                v.insert(len);
+                self.lex.conversation_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_author(&mut self, author: &AuthorCell) -> u64 {
+        match self.authors.entry(asptr(author)) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.author_vec.len() as u64;
+                v.insert(len);
+                self.lex.author_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_word(&mut self, word: &WordCell) -> u64 {
+        let len = self.lex.word_vec.len() as u64;
+        match self.words.entry(asptr(word)) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.word_vec.len() as u64;
+                v.insert(len);
+                self.lex.word_vec.push(Default::default());
+                len
+            },
+        }
     }
 }
