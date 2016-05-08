@@ -54,18 +54,26 @@ fn main() {
             },
             Decision::ImportLines(filename) => {
                 let author = lex.author(console.clone(), filename.clone());
-                for (index, line) in BufReader::new(File::open(&filename).ok().unwrap()).lines().enumerate() {
-                    match line {
-                        Ok(s) => {
-                            lex.tell(console.clone(), author.clone(), s);
-                            if (index + 1) % 10000 == 0 {
-                                println!("On line {} of {}", index + 1, filename);
+                let file = File::open(&filename);
+                match file {
+                    Ok(f) => {
+                        for (index, line) in BufReader::new(f).lines().enumerate() {
+                            match line {
+                                Ok(s) => {
+                                    lex.tell(console.clone(), author.clone(), s);
+                                    if (index + 1) % 10000 == 0 {
+                                        println!("On line {} of {}", index + 1, filename);
+                                    }
+                                },
+                                Err(_) => {
+                                    println!("Ignoring: File had read error on line {}", index + 1);
+                                },
                             }
-                        },
-                        Err(_) => {
-                            println!("Ignoring: File had read error on line {}", index + 1);
-                        },
-                    }
+                        }
+                    },
+                    Err(_) => {
+                        println!("Ignoring: Unable to open file");
+                    },
                 }
                 reset();
             },
