@@ -65,22 +65,35 @@ impl Iterator for Iter {
                     })
                     .filter(|s| !s.is_empty()).collect_vec();
 
+                let help = || {
+                    println!("Available commands: import, connect, list, respond, tell");
+                    Some(Decision::ResetCursor)
+                };
+
                 match params.len() {
                     0 => {
-                        println!("Available commands: import, connect, list, respond, tell");
-                        Some(Decision::ResetCursor)
+                        help()
                     },
                     _ => {
                         match params[0] {
+                            "help" => {
+                                help()
+                            },
                             "import" => {
-                                if params.len() != 3 {
-                                    println!("Ignored: import takes 2 params");
+                                if params.len() < 2 {
+                                    println!("Usage: import <import type>");
+                                    println!("Available import types: lines");
                                     Some(Decision::ResetCursor)
                                 } else {
                                     match params[1] {
                                         "lines" => {
-                                            println!("Importing lines from `{}`...", params[2]);
-                                            Some(Decision::ImportLines(params[2].to_string()))
+                                            if params.len() != 3 {
+                                                println!("Usage: import lines <filname>");
+                                                Some(Decision::ResetCursor)
+                                            } else {
+                                                println!("Importing lines from `{}`...", params[2]);
+                                                Some(Decision::ImportLines(params[2].to_string()))
+                                            }
                                         },
                                         _ => {
                                             println!("Ignored: Unrecognized import type");
@@ -109,7 +122,7 @@ impl Iterator for Iter {
                                                 println!("Ignored: connect irc requires a config path");
                                                 Some(Decision::ResetCursor)
                                             } else {
-                                                Some(Decision::ConnectIrc(params[3].to_string()))
+                                                Some(Decision::ConnectIrc(params[2].to_string()))
                                             }
                                         },
                                         "discord" => {
@@ -117,7 +130,7 @@ impl Iterator for Iter {
                                                 println!("Ignored: connect discord requires a config path");
                                                 Some(Decision::ResetCursor)
                                             } else {
-                                                Some(Decision::ConnectDiscord(params[3].to_string()))
+                                                Some(Decision::ConnectDiscord(params[2].to_string()))
                                             }
                                         },
                                         _ => {
