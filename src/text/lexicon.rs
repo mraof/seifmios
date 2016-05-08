@@ -298,17 +298,13 @@ impl<R: rand::Rng> Lexicon<R> {
 #[derive(Default)]
 struct SerialHelper {
     lex: SerialLexicon,
-    conversations: BTreeMap<*const Conversation, u64>,
-    authors: BTreeMap<*const Author, u64>,
-    sources: BTreeMap<*const Source, u64>,
-    word_instances: BTreeMap<*const WordInstance, u64>,
-    messages: BTreeMap<*const Message, u64>,
-    categories: BTreeMap<*const Category, u64>,
-    words: BTreeMap<*const Word, u64>,
-}
-
-fn asptr<T>(t: &Rc<RefCell<T>>) -> *const T {
-    &*t.borrow() as *const T
+    conversations: BTreeMap<ConversationCell, u64>,
+    authors: BTreeMap<AuthorCell, u64>,
+    sources: BTreeMap<SourceCell, u64>,
+    word_instances: BTreeMap<InstanceCell, u64>,
+    messages: BTreeMap<MessageCell, u64>,
+    categories: BTreeMap<CategoryCell, u64>,
+    words: BTreeMap<WordCell, u64>,
 }
 
 impl SerialHelper {
@@ -320,7 +316,7 @@ impl SerialHelper {
     }
 
     fn get_conversation(&mut self, conversation: &ConversationCell) -> u64 {
-        match self.conversations.entry(asptr(conversation)) {
+        match self.conversations.entry(conversation.clone()) {
             Entry::Occupied(o) => *o.get(),
             Entry::Vacant(v) => {
                 let len = self.lex.conversation_vec.len() as u64;
@@ -332,7 +328,7 @@ impl SerialHelper {
     }
 
     fn get_author(&mut self, author: &AuthorCell) -> u64 {
-        match self.authors.entry(asptr(author)) {
+        match self.authors.entry(author.clone()) {
             Entry::Occupied(o) => *o.get(),
             Entry::Vacant(v) => {
                 let len = self.lex.author_vec.len() as u64;
@@ -345,7 +341,7 @@ impl SerialHelper {
 
     fn get_word(&mut self, word: &WordCell) -> u64 {
         let len = self.lex.word_vec.len() as u64;
-        match self.words.entry(asptr(word)) {
+        match self.words.entry(word.clone()) {
             Entry::Occupied(o) => *o.get(),
             Entry::Vacant(v) => {
                 let len = self.lex.word_vec.len() as u64;
