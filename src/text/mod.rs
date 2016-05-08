@@ -15,7 +15,7 @@ mod author;
 mod source;
 mod word;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 pub type WordCell = SCell<Word>;
 pub type AuthorCell = SCell<Author>;
@@ -135,7 +135,7 @@ struct SerialMessage {
 #[derive(Default)]
 pub struct Category {
     instances: Vec<InstanceCell>,
-    cocategories: Vec<CategoryCell>,
+    cocategories: BTreeSet<CategoryCell>,
 }
 
 #[derive(Deserialize, Serialize)]
