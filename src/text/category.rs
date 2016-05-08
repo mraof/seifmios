@@ -67,31 +67,19 @@ impl Category {
         if coincidences == needed {
             // Make these cocategories
 
-            // Check if they are already cocategories
-            if cs.0.borrow().cocategories.contains(&cs.1) {
-                // Then we are done
-                return;
+            // This if statement allows the code to avoid trying to add the cocategory to the second set if
+            // it knows it was found in the first one
+            if cs.0.borrow_mut().cocategories.insert(cs.1.clone()) {
+                cs.1.borrow_mut().cocategories.insert(cs.0.clone());
             }
-
-            // Add it
-            cs.0.borrow_mut().cocategories.push(cs.1.clone());
-            cs.1.borrow_mut().cocategories.push(cs.0.clone());
         } else {
             // Unmake these cocategories
 
-            // Find position in vector of cocategories
-            let csp0 = cs.0.borrow().cocategories.iter().position(|i| *i == cs.1);
-            // If it wasnt found
-            if csp0.is_none() {
-                // Then we are done
-                return;
+            // This if statement allows the code to avoid trying to remove the cocategory from the second set if
+            // it knows it wasnt found in the first one
+            if cs.0.borrow_mut().cocategories.remove(&cs.1) {
+                cs.1.borrow_mut().cocategories.remove(&cs.0);
             }
-            let csp1 = cs.1.borrow().cocategories.iter().position(|i| *i == cs.0);
-
-            // Remove it
-            cs.0.borrow_mut().cocategories.swap_remove(csp0.unwrap());
-            // In the case this panics, two cocategories didnt contain each other (bad stuff!)
-            cs.1.borrow_mut().cocategories.swap_remove(csp1.unwrap());
         }
     }
 

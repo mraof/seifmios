@@ -1,5 +1,7 @@
 extern crate rand;
+extern crate scell;
 use rand::Rng;
+use self::scell::*;
 
 #[macro_use]
 mod pord_macros;
@@ -13,20 +15,19 @@ mod author;
 mod source;
 mod word;
 
-use std::collections::BTreeMap;
-use std::rc::Rc;
-use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
 
-pub type WordCell = Rc<RefCell<Word>>;
-pub type AuthorCell = Rc<RefCell<Author>>;
-pub type SourceCell = Rc<RefCell<Source>>;
-pub type MessageCell = Rc<RefCell<Message>>;
-pub type CategoryCell = Rc<RefCell<Category>>;
-pub type ConversationCell = Rc<RefCell<Conversation>>;
-pub type InstanceCell = Rc<RefCell<WordInstance>>;
+pub type WordCell = SCell<Word>;
+pub type AuthorCell = SCell<Author>;
+pub type SourceCell = SCell<Source>;
+pub type MessageCell = SCell<Message>;
+pub type CategoryCell = SCell<Category>;
+pub type ConversationCell = SCell<Conversation>;
+pub type InstanceCell = SCell<WordInstance>;
 
-fn wrap<T>(t: T) -> Rc<RefCell<T>> {
-    Rc::new(RefCell::new(t))
+#[inline]
+fn wrap<T>(t: T) -> SCell<T> {
+    SCell::new(t)
 }
 
 pub enum Mismatch<T> {
@@ -46,7 +47,7 @@ pub struct Lexicon<R: Rng> {
     conversations: Vec<ConversationCell>,
     messages: Vec<MessageCell>,
 
-    active_conversations: BTreeMap<*const Source, ConversationCell>,
+    active_conversations: BTreeMap<SourceCell, ConversationCell>,
 }
 
 #[derive(Deserialize, Serialize, Default)]
@@ -134,7 +135,7 @@ struct SerialMessage {
 #[derive(Default)]
 pub struct Category {
     instances: Vec<InstanceCell>,
-    cocategories: Vec<CategoryCell>,
+    cocategories: BTreeSet<CategoryCell>,
 }
 
 #[derive(Deserialize, Serialize, Default)]

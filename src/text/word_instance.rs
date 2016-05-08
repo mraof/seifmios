@@ -12,7 +12,7 @@ impl WordInstance {
                 (ms.0.instances.get((bs.0.index as isize - i) as usize),
                     ms.1.instances.get((bs.1.index as isize - i) as usize)),
                 (ms.0.instances.get((bs.0.index as isize + i) as usize),
-                    ms.1.instances.get((bs.1.index as isize + i) as usize))
+                    ms.1.instances.get((bs.1.index as isize + i) as usize)),
             );
 
             match msins.0 {
