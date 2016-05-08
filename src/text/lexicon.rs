@@ -49,7 +49,7 @@ impl<R: rand::Rng> Lexicon<R> {
 
     /// Tell a message to the lexicon and potentially get a response back.
     pub fn tell(&mut self, source: SourceCell, author: AuthorCell, content: String) {
-        let conversation = match self.active_conversations.entry(&*source.borrow() as *const Source) {
+        let conversation = match self.active_conversations.entry(source.clone()) {
             Entry::Vacant(v) => {
                 let c = wrap(Conversation{
                     source: source.clone(),
@@ -118,7 +118,7 @@ impl<R: rand::Rng> Lexicon<R> {
             messages: Vec::new(),
         });
 
-        match self.active_conversations.entry(&*source.borrow() as *const Source) {
+        match self.active_conversations.entry(source.clone()) {
             Entry::Vacant(v) => {
                 v.insert(conversation.clone());
             },
@@ -249,14 +249,14 @@ impl<R: rand::Rng> Lexicon<R> {
         for message in &self.messages {
             for instance in &message.borrow().instances {
                 let ib = instance.borrow();
-                set.insert(&*ib.category.borrow() as *const Category);
+                set.insert(ib.category.clone());
             }
         }
 
         let len = set.len();
 
         for cat in set {
-            let catr = unsafe{&*cat};
+            let catr = cat.borrow();
             if catr.instances.len() != 1 {
                 println!("Category:");
                 for cocategory in &catr.cocategories {

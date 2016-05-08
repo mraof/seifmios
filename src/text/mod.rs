@@ -47,7 +47,7 @@ pub struct Lexicon<R: Rng> {
     conversations: Vec<ConversationCell>,
     messages: Vec<MessageCell>,
 
-    active_conversations: BTreeMap<*const Source, ConversationCell>,
+    active_conversations: BTreeMap<SourceCell, ConversationCell>,
 }
 
 #[derive(Deserialize, Serialize)]
