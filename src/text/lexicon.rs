@@ -223,12 +223,10 @@ impl<R: rand::Rng> Lexicon<R> {
             None => return,
         };
 
-        self.learn(m);
-
         // Get two random categories (we already know messages exist from above)
         Category::cocategorize((
             {
-                let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                let b = m.borrow();
                 let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
                 b.category.clone()
             },

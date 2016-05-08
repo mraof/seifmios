@@ -20,8 +20,7 @@ impl Message {
     pub fn mismatch<F>(messages: (MessageCell, MessageCell), diff: F) -> Mismatch<(InstanceCell, InstanceCell)>
         where F: Fn((&WordInstance, &WordInstance)) -> bool
     {
-        if messages.0 == messages.1 ||
-            messages.0.borrow().instances.len() != messages.1.borrow().instances.len() {
+        if messages.0 == messages.1 || messages.0.borrow().instances.len() != messages.1.borrow().instances.len() {
             return Mismatch::None;
         }
         messages.0.borrow().instances.iter()
@@ -48,8 +47,7 @@ impl Message {
             })
     }
 
-    pub fn category_and_word_mismatch(messages: (MessageCell, MessageCell)) ->
-        Mismatch<(InstanceCell, InstanceCell)> {
+    pub fn category_and_word_mismatch(messages: (MessageCell, MessageCell)) -> Mismatch<(InstanceCell, InstanceCell)> {
         Self::mismatch(messages, |ins| ins.0.word != ins.1.word && ins.0.category != ins.1.category)
     }
 }
