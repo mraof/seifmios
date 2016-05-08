@@ -291,6 +291,7 @@ impl<R: rand::Rng> Lexicon<R> {
     /// Turn the lexicon into its serial form for serilization
     pub fn serial_form(&self) -> SerialLexicon {
         let mut helper = SerialHelper::default();
+        helper.add_lexicon(self);
         helper.lex
     }
 }
@@ -301,17 +302,36 @@ struct SerialHelper {
     conversations: BTreeMap<ConversationCell, u64>,
     authors: BTreeMap<AuthorCell, u64>,
     sources: BTreeMap<SourceCell, u64>,
-    word_instances: BTreeMap<InstanceCell, u64>,
+    instances: BTreeMap<InstanceCell, u64>,
     messages: BTreeMap<MessageCell, u64>,
     categories: BTreeMap<CategoryCell, u64>,
     words: BTreeMap<WordCell, u64>,
 }
 
 impl SerialHelper {
+    fn add_lexicon<R: rand::Rng>(&mut self, lexicon: &Lexicon<R>) {
+
+    }
+
     fn add_word(&mut self, word: &WordCell) {
         let uid = self.get_word(word);
+        // If this word is already complete
+        if self.lex.word_vec[uid as usize].complete {
+            return;
+        }
+        // Claim that word is complete now so nothing tries to complete it
+        self.lex.word_vec[uid as usize].complete = true;
+
         if self.lex.words.insert(word.borrow().name.clone(), uid).is_some() {
             panic!("Error: Improper internal usage of SerialHelper.");
+        }
+        let wb = word.borrow();
+        self.lex.word_vec[uid as usize].name = wb.name.clone();
+
+        for instance in &wb.instances {
+            let instance_uid = self.get_instance(instance);
+            self.lex.word_vec[uid as usize].instances.push(instance_uid);
+            // TODO: Add instances to lexicon
         }
     }
 
@@ -334,6 +354,54 @@ impl SerialHelper {
                 let len = self.lex.author_vec.len() as u64;
                 v.insert(len);
                 self.lex.author_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_source(&mut self, source: &SourceCell) -> u64 {
+        match self.sources.entry(source.clone()) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.source_vec.len() as u64;
+                v.insert(len);
+                self.lex.source_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_instance(&mut self, instance: &InstanceCell) -> u64 {
+        match self.instances.entry(instance.clone()) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.instance_vec.len() as u64;
+                v.insert(len);
+                self.lex.instance_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_message(&mut self, message: &MessageCell) -> u64 {
+        match self.messages.entry(message.clone()) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.message_vec.len() as u64;
+                v.insert(len);
+                self.lex.message_vec.push(Default::default());
+                len
+            },
+        }
+    }
+
+    fn get_category(&mut self, category: &CategoryCell) -> u64 {
+        match self.categories.entry(category.clone()) {
+            Entry::Occupied(o) => *o.get(),
+            Entry::Vacant(v) => {
+                let len = self.lex.category_vec.len() as u64;
+                v.insert(len);
+                self.lex.category_vec.push(Default::default());
                 len
             },
         }

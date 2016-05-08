@@ -52,6 +52,9 @@ pub struct Lexicon<R: Rng> {
 
 #[derive(Deserialize, Serialize, Default)]
 pub struct SerialLexicon {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     words: BTreeMap<String, u64>,
     sources: BTreeMap<String, u64>,
     conversations: Vec<u64>,
@@ -61,7 +64,7 @@ pub struct SerialLexicon {
     conversation_vec: Vec<SerialConversation>,
     author_vec: Vec<SerialAuthor>,
     source_vec: Vec<SerialSource>,
-    word_instance_vec: Vec<SerialWordInstance>,
+    instance_vec: Vec<SerialWordInstance>,
     message_vec: Vec<SerialMessage>,
     category_vec: Vec<SerialCategory>,
     word_vec: Vec<SerialWord>,
@@ -74,6 +77,9 @@ pub struct Conversation {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialConversation {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     source: u64,
     messages: Vec<u64>,
 }
@@ -85,6 +91,9 @@ pub struct Author {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialAuthor {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     source: u64,
     name: String,
 }
@@ -97,6 +106,9 @@ pub struct Source {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialSource {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     name: String,
     messages: u64,
     authors: BTreeMap<String, u64>,
@@ -111,6 +123,9 @@ pub struct WordInstance {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialWordInstance {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     word: u64,
     category: u64,
     message: u64,
@@ -126,6 +141,9 @@ pub struct Message {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialMessage {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     author: u64,
     conversation: u64,
     index: u64,
@@ -140,6 +158,9 @@ pub struct Category {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialCategory {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     instances: Vec<u64>,
     cocategories: Vec<u64>,
 }
@@ -151,6 +172,9 @@ pub struct Word {
 
 #[derive(Deserialize, Serialize, Default)]
 struct SerialWord {
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
+    complete: bool,
     name: String,
     instances: Vec<u64>,
 }
