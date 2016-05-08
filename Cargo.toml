@@ -17,4 +17,4 @@ discord = "0.5.0"
 serde = "0.7.4"
 serde_json = "0.7.0"
 serde_macros = "0.7.4"
-scell = {version = "1.0.0", features = []}
+scell = {version = "1.0.0", features = ["unchecked"]}

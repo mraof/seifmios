@@ -132,48 +132,74 @@ impl<R: rand::Rng> Lexicon<R> {
 
     /// Say something based on the conversation context
     pub fn respond(&mut self, source: SourceCell) -> Option<String> {
+        use std::collections::VecDeque;
         let base = match self.rng.choose(&self.messages[..]) {
             Some(m) => m.clone(),
             None => return None,
         };
 
-        let bborrow = base.borrow();
+        // Make a double-ended vec for building the message out of categories
+        let mut instances = VecDeque::new();
+
+        // Push the base instance onto the categories vec
+        instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
+
+        let mut instance_chooser = |category: CategoryCell| {
+            let b = category.borrow();
+            // Find the count of how many word instances exist total
+            let mut count = b.instances.len();
+            for cocategory in &b.cocategories {
+                count += cocategory.borrow().instances.len();
+            }
+            // Generate an index based on the count
+            let mut i = self.rng.gen_range(0, count);
+            match b.instances.get(i) {
+                // It was in the original category
+                Some(ins) => ins.clone(),
+                // It was in a cocategory
+                None => {
+                    // Subtract the cocategory length from the index
+                    i -= b.instances.len();
+                    for cocategory in &b.cocategories {
+                        let b = cocategory.borrow();
+                        // If it was in this category
+                        if let Some(ins) = b.instances.get(i) {
+                            // Clone the instance and return it
+                            return ins.clone();
+                        }
+                        // Otherwise subtract by the amount of instances in this cocategory
+                        i -= b.instances.len();
+                    }
+                    // The index should point to some category, so this is unreachable
+                    unreachable!();
+                },
+            }
+        };
+
+        // Iterate forwards weaving between messages and adding instances to the vec
+        loop {
+            let ins = instances.back().unwrap().borrow().next_instance();
+            if let Some(i) = ins {
+                instances.push_back(instance_chooser(i.borrow().category.clone()));
+            } else {
+                break;
+            }
+        }
+        // Iterate backwards to reach the beginning of the message
+        loop {
+            let ins = instances.front().unwrap().borrow().prev_instance();
+            if let Some(i) = ins {
+                instances.push_front(instance_chooser(i.borrow().category.clone()));
+            } else {
+                break;
+            }
+        }
 
         Some(
-            bborrow.instances.iter()
+            instances.iter()
                 .map(|instance| instance.borrow().category.clone())
                 // TODO: Allow random choosing from co-category instances as well
-                .map(|category| {
-                    let b = category.borrow();
-                    // Find the count of how many word instances exist total
-                    let mut count = b.instances.len();
-                    for cocategory in &b.cocategories {
-                        count += cocategory.borrow().instances.len();
-                    }
-                    // Generate an index based on the count
-                    let mut i = self.rng.gen_range(0, count);
-                    match b.instances.get(i) {
-                        // It was in the original category
-                        Some(ins) => ins.clone(),
-                        // It was in a cocategory
-                        None => {
-                            // Subtract the cocategory length from the index
-                            i -= b.instances.len();
-                            for cocategory in &b.cocategories {
-                                let b = cocategory.borrow();
-                                // If it was in this category
-                                if let Some(ins) = b.instances.get(i) {
-                                    // Clone the instance and return it
-                                    return ins.clone();
-                                }
-                                // Otherwise subtract by the amount of instances in this cocategory
-                                i -= b.instances.len();
-                            }
-                            // The index should point to some category, so this is unreachable
-                            unreachable!();
-                        },
-                    }
-                })
+                .map(|category| instance_chooser(category))
                 .map(|instance| {
                     let ins = instance.borrow();
                     let word = ins.word.borrow();
