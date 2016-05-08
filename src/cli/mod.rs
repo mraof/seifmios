@@ -119,7 +119,7 @@ impl Iterator for Iter {
                                         },
                                         "irc" => {
                                             if params.len() != 3 {
-                                                println!("Ignored: connect irc requires a config path");
+                                                println!("Usage: connect irc <config>");
                                                 Some(Decision::ResetCursor)
                                             } else {
                                                 Some(Decision::ConnectIrc(params[2].to_string()))
@@ -127,7 +127,7 @@ impl Iterator for Iter {
                                         },
                                         "discord" => {
                                             if params.len() != 3 {
-                                                println!("Ignored: connect discord requires a config path");
+                                                println!("Usage: connect discord <config>");
                                                 Some(Decision::ResetCursor)
                                             } else {
                                                 Some(Decision::ConnectDiscord(params[2].to_string()))
@@ -142,7 +142,8 @@ impl Iterator for Iter {
                             },
                             "list" => {
                                 if params.len() != 2 {
-                                    println!("Ignored: list takes 1 param");
+                                    println!("Usage: list <list type>");
+                                    println!("Available list types: categories");
                                     Some(Decision::ResetCursor)
                                 } else {
                                     match params[1] {
@@ -158,7 +159,7 @@ impl Iterator for Iter {
                             },
                             "respond" => {
                                 if params.len() != 1 {
-                                    println!("Ignored: respond takes no params");
+                                    println!("Usage: respond");
                                     Some(Decision::ResetCursor)
                                 } else {
                                     Some(Decision::Respond)
@@ -166,7 +167,7 @@ impl Iterator for Iter {
                             },
                             "tell" => {
                                 if params.len() != 2 {
-                                    println!("Ignored: respond takes 1 param");
+                                    println!("Usage: tell <message>");
                                     Some(Decision::ResetCursor)
                                 } else {
                                     Some(Decision::Tell(params[1].to_string()))
