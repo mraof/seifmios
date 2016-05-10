@@ -131,7 +131,7 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Say something based on the conversation context
-    pub fn respond(&mut self, source: SourceCell) -> Option<String> {
+    pub fn respond(&mut self, source: SourceCell) -> Option<(String, String)> {
         use std::collections::VecDeque;
         let base = match self.rng.choose(&self.messages[..]) {
             Some(m) => m.clone(),
@@ -195,7 +195,14 @@ impl<R: rand::Rng> Lexicon<R> {
             }
         }
 
-        Some(
+        Some((
+            instances.iter()
+                .map(|instance| {
+                    let ins = instance.borrow();
+                    let word = ins.word.borrow();
+                    word.name.clone()
+                })
+                .join(" "),
             instances.iter()
                 .map(|instance| instance.borrow().category.clone())
                 // TODO: Allow random choosing from co-category instances as well
@@ -206,11 +213,11 @@ impl<R: rand::Rng> Lexicon<R> {
                     word.name.clone()
                 })
                 .join(" ")
-        )
+        ))
     }
 
     /// Have seifmios attempt to initiate a conversation at a source, but it may fail.
-    pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
+    pub fn initiate(&mut self, source: SourceCell) -> Option<(String, String)> {
         self.switch(source.clone());
         self.respond(source)
     }

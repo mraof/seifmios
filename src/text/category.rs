@@ -2,7 +2,7 @@ use super::*;
 use super::wrap;
 use std::cmp::Ordering;
 
-const RATIO_TO_COCATEGORIZE: f64 = 0.05;
+const RATIO_TO_COCATEGORIZE: f64 = 0.15;
 
 pointer_ord!(Category);
 

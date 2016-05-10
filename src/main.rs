@@ -37,7 +37,7 @@ fn main() {
                         lex.tell(source.clone(), author.clone(), message.message);
                         if let Some(reply_sender) = replier {
                             if let Some(reply) = lex.respond(source) {
-                                if reply_sender.send(reply).is_err() {
+                                if reply_sender.send(reply.1).is_err() {
                                     println!("");
                                     println!("Warning: Reply sender from {} closed unexpectedly", message.source);
                                     reset();
@@ -83,7 +83,7 @@ fn main() {
             },
             Decision::Respond => {
                 if let Some(s) = lex.initiate(console.clone()) {
-                    println!("{}", s);
+                    println!("Original: {}\nResponse: {}", s.0, s.1);
                 }
                 reset();
             },
