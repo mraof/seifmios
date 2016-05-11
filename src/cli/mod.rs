@@ -29,7 +29,19 @@ pub fn new() -> Iter {
             for line in stdin.lock().lines() {
                 match line {
                     Ok(s) => {
-                        if sender.send(s).is_err() {
+                        let params = s.split('`')
+                            .enumerate()
+                            .flat_map(|(iter, s)| {
+                                // If we are not in a quotation
+                                if iter % 2 == 0 {
+                                    either::Left(s.split(' '))
+                                } else {
+                                    use std::iter::once;
+                                    either::Right(once(s))
+                                }
+                            })
+                            .filter(|s| !s.is_empty()).map(|s| s.to_string()).collect_vec();
+                        if sender.send(params).is_err() {
                             break;
                         }
                     },
@@ -45,7 +57,7 @@ pub fn new() -> Iter {
 
 pub struct Iter {
     _thread: JoinHandle<()>,
-    receiver: Receiver<String>,
+    receiver: Receiver<Vec<String>>,
 }
 
 impl Iterator for Iter {
@@ -53,20 +65,7 @@ impl Iterator for Iter {
 
     fn next(&mut self) -> Option<Decision> {
         match self.receiver.try_recv() {
-            Ok(s) => {
-                let params = s.split('`')
-                    .enumerate()
-                    .flat_map(|(iter, s)| {
-                        // If we are not in a quotation
-                        if iter % 2 == 0 {
-                            either::Left(s.split(' '))
-                        } else {
-                            use std::iter::once;
-                            either::Right(once(s))
-                        }
-                    })
-                    .filter(|s| !s.is_empty()).collect_vec();
-
+            Ok(params) => {
                 let help = || {
                     println!("Available commands: import, connect, list, respond, tell, get, set");
                     Some(Decision::ResetCursor)
@@ -77,7 +76,7 @@ impl Iterator for Iter {
                         help()
                     },
                     _ => {
-                        match params[0] {
+                        match &*params[0] {
                             "help" => {
                                 help()
                             },
@@ -87,7 +86,7 @@ impl Iterator for Iter {
                                     println!("Available import types: lines");
                                     Some(Decision::ResetCursor)
                                 } else {
-                                    match params[1] {
+                                    match &*params[1] {
                                         "lines" => {
                                             if params.len() != 3 {
                                                 println!("Usage: import lines <filname>");
@@ -110,7 +109,7 @@ impl Iterator for Iter {
                                     println!("Values: cc_ratio");
                                     Some(Decision::ResetCursor)
                                 } else {
-                                    match params[1] {
+                                    match &*params[1] {
                                         "cc_ratio" => {
                                             if params.len() != 3 {
                                                 println!("Usage: set cc_ratio <ratio>");
@@ -140,7 +139,7 @@ impl Iterator for Iter {
                                     println!("Values: cc_ratio");
                                     Some(Decision::ResetCursor)
                                 } else {
-                                    match params[1] {
+                                    match &*params[1] {
                                         "cc_ratio" => {
                                             if params.len() != 2 {
                                                 println!("Usage: get cc_ratio");
@@ -162,7 +161,7 @@ impl Iterator for Iter {
                                     println!("Connect types: server, irc, discord");
                                     Some(Decision::ResetCursor)
                                 } else {
-                                    match params[1] {
+                                    match &*params[1] {
                                         "server" => {
                                             if params.len() != 2 {
                                                 println!("Ignored: no extra parameters needed");
@@ -200,7 +199,7 @@ impl Iterator for Iter {
                                     println!("Available list types: categories");
                                     Some(Decision::ResetCursor)
                                 } else {
-                                    match params[1] {
+                                    match &*params[1] {
                                         "categories" => {
                                             Some(Decision::ShowCategories)
                                         },
