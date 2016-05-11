@@ -2,8 +2,6 @@ use super::*;
 use super::wrap;
 use std::cmp::Ordering;
 
-const RATIO_TO_COCATEGORIZE: f64 = 0.15;
-
 pointer_ord!(Category);
 
 impl Category {
@@ -27,7 +25,7 @@ impl Category {
     }
 
     /// Determine if the categories should be cocategories
-    pub fn cocategorize(cs: (CategoryCell, CategoryCell)) {
+    pub fn cocategorize(cs: (CategoryCell, CategoryCell), cocategorization_ratio: f64) {
         // First, check to see if they are the same category
         if cs.0 == cs.1 {
             // Nothing to do in that case
@@ -39,7 +37,7 @@ impl Category {
         // Make a counter to see how many instances coincide
         let mut coincidences = 0;
 
-        let needed = (total as f64 * RATIO_TO_COCATEGORIZE + 0.5) as usize + 1;
+        let needed = (total as f64 * cocategorization_ratio + 0.5) as usize + 1;
 
         // Look through all the instances between both categories
         {

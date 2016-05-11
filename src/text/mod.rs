@@ -42,6 +42,7 @@ pub enum Mismatch<T> {
 #[derive(Default)]
 pub struct Lexicon<R: Rng> {
     rng: R,
+    pub cocategorization_ratio: f64,
     words: BTreeMap<String, WordCell>,
     sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,

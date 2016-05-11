@@ -7,11 +7,14 @@ use super::wrap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 
+const RATIO_TO_COCATEGORIZE: f64 = 0.15;
+
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
     pub fn new(rng: R) -> Lexicon<R> {
         Lexicon{
             rng: rng,
+            cocategorization_ratio: RATIO_TO_COCATEGORIZE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -242,7 +245,7 @@ impl<R: rand::Rng> Lexicon<R> {
                 let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
                 b.category.clone()
             },
-        ));
+        ), self.cocategorization_ratio);
     }
 
     pub fn learn(&mut self, message: MessageCell) {

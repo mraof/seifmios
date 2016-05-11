@@ -114,6 +114,14 @@ fn main() {
                 spawn(move || chat::discord::connect(sender, config));
                 reset();
             },
+            Decision::ChangeCocategoryRatio(f) => {
+                lex.cocategorization_ratio = f;
+                reset();
+            },
+            Decision::GetCocategoryRatio => {
+                println!("{}", lex.cocategorization_ratio);
+                reset();
+            },
         }
     }
 }

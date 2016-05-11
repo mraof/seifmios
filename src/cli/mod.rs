@@ -17,6 +17,8 @@ pub enum Decision {
     ConnectServer,
     ConnectIrc(String),
     ConnectDiscord(String),
+    ChangeCocategoryRatio(f64),
+    GetCocategoryRatio,
 }
 
 pub fn new() -> Iter {
@@ -66,7 +68,7 @@ impl Iterator for Iter {
                     .filter(|s| !s.is_empty()).collect_vec();
 
                 let help = || {
-                    println!("Available commands: import, connect, list, respond, tell");
+                    println!("Available commands: import, connect, list, respond, tell, get, set");
                     Some(Decision::ResetCursor)
                 };
 
@@ -97,6 +99,58 @@ impl Iterator for Iter {
                                         },
                                         _ => {
                                             println!("Ignored: Unrecognized import type");
+                                            Some(Decision::ResetCursor)
+                                        },
+                                    }
+                                }
+                            },
+                            "set" => {
+                                if params.len() < 2 {
+                                    println!("Usage: set <value>");
+                                    println!("Values: cc_ratio");
+                                    Some(Decision::ResetCursor)
+                                } else {
+                                    match params[1] {
+                                        "cc_ratio" => {
+                                            if params.len() != 3 {
+                                                println!("Usage: set cc_ratio <ratio>");
+                                                Some(Decision::ResetCursor)
+                                            } else {
+                                                match params[2].parse::<f64>() {
+                                                    Ok(f) => {
+                                                        Some(Decision::ChangeCocategoryRatio(f))
+                                                    },
+                                                    Err(e) => {
+                                                        println!("Ignored: Error converting value: {}", e);
+                                                        Some(Decision::ResetCursor)
+                                                    },
+                                                }
+                                            }
+                                        },
+                                        _ => {
+                                            println!("Ignored: Unrecognized set value");
+                                            Some(Decision::ResetCursor)
+                                        },
+                                    }
+                                }
+                            },
+                            "get" => {
+                                if params.len() < 2 {
+                                    println!("Usage: get <value>");
+                                    println!("Values: cc_ratio");
+                                    Some(Decision::ResetCursor)
+                                } else {
+                                    match params[1] {
+                                        "cc_ratio" => {
+                                            if params.len() != 2 {
+                                                println!("Usage: get cc_ratio");
+                                                Some(Decision::ResetCursor)
+                                            } else {
+                                                Some(Decision::GetCocategoryRatio)
+                                            }
+                                        },
+                                        _ => {
+                                            println!("Ignored: Unrecognized get value");
                                             Some(Decision::ResetCursor)
                                         },
                                     }
