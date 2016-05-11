@@ -94,4 +94,84 @@ impl WordInstance {
         }
         unreachable!();
     }
+
+    pub fn coincidence_neighbors(ins: (&InstanceCell, &InstanceCell)) -> bool {
+        let bs = (ins.0.borrow(), ins.1.borrow());
+        let ms = (bs.0.message.borrow(), bs.1.message.borrow());
+        let msins = (
+            (ms.0.instances.get((bs.0.index as isize - 1) as usize),
+                ms.1.instances.get((bs.1.index as isize - 1) as usize)),
+            (ms.0.instances.get((bs.0.index as isize + 1) as usize),
+                ms.1.instances.get((bs.1.index as isize + 1) as usize)),
+        );
+
+        match msins.0 {
+            // There are two words
+            (Some(i0), Some(i1)) => {
+                // If both the categories and words don't match
+                if !Category::are_cocategories((&i0.borrow().category, &i1.borrow().category))
+                    && i0.borrow().word != i1.borrow().word {
+                    // The coincidence level doesn't go this far
+                    return false;
+                // They do match
+                } else {
+                    // But we also need to check the right instances
+                    match msins.1 {
+                        (Some(i0), Some(i1)) => {
+                            // If both the categories and words don't match
+                            if !Category::are_cocategories(
+                                (&i0.borrow().category, &i1.borrow().category))
+                                && i0.borrow().word != i1.borrow().word {
+                                // The coincidence level doesn't go this far
+                                return false;
+                            }
+                            // Its a match so we return true
+                            return true;
+                        },
+                        (None, None) => {
+                            // We can't go any further on this side, so this is the coincidence
+                            return true;
+                        },
+                        _ => {
+                            // Any combination of Some and None is a mismatch
+                            return false;
+                        }
+                    }
+                }
+            },
+            // The sentence ends in both spots
+            (None, None) => {
+                // We can't go any further, but we also need to check the right instances
+                match msins.1 {
+                    (Some(i0), Some(i1)) => {
+                        // If both the categories and words don't match
+                        if !Category::are_cocategories(
+                            (&i0.borrow().category, &i1.borrow().category))
+                            && i0.borrow().word != i1.borrow().word {
+                            // The coincidence level doesn't go this far
+                            return false;
+                        // They do match
+                        } else {
+                            // This is the end but also the correct level
+                            return true;
+                        }
+                    },
+                    (None, None) => {
+                        // We can't go any further on either side, so this is the coincidence
+                        return true;
+                    },
+                    _ => {
+                        // Any combination of Some and None is a mismatch
+                        return false;
+                    }
+                }
+                unreachable!();
+            }
+            _ => {
+                // Any combination of Some and None is a mismatch
+                return false;
+            }
+        }
+        unreachable!();
+    }
 }

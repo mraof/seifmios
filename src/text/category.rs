@@ -50,7 +50,7 @@ impl Category {
 
                     // TODO: Look behind and ahead by more than just 1 instance
                     // Check if the coincidence level is at least 1 (for now)
-                    if WordInstance::coincidence_level((i0, i1)) >= 1 {
+                    if WordInstance::coincidence_neighbors((i0, i1)) {
                         // Increment the amount of coincidences
                         coincidences += 1;
                         if coincidences == needed {
