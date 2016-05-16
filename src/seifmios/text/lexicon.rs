@@ -4,6 +4,8 @@ use self::itertools::Itertools;
 use super::*;
 use super::wrap;
 
+use super::super::cli::SocketLend;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 
@@ -278,7 +280,7 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Print all multiple categories and return the amount of categories total
-    pub fn show_categories(&self) -> usize {
+    pub fn show_categories(&self, socket: &mut SocketLend) -> usize {
         let mut set = BTreeSet::new();
         for message in &self.messages {
             for instance in &message.borrow().instances {
@@ -292,18 +294,18 @@ impl<R: rand::Rng> Lexicon<R> {
         for cat in set {
             let catr = cat.borrow();
             if catr.instances.len() != 1 {
-                println!("Category:");
+                socket.msg("Category:");
                 for cocategory in &catr.cocategories {
-                    println!("\tCocategory:");
+                    socket.msg("\tCocategory:");
                     let catr = cocategory.borrow();
                     for instance in &catr.instances {
                         let ib = instance.borrow();
-                        println!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
+                        socket.msg(&format!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
                     }
                 }
                 for instance in &catr.instances {
                     let ib = instance.borrow();
-                    println!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
+                    socket.msg(&format!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
                 }
             }
         }

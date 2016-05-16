@@ -1,17 +1,42 @@
 use std::thread::{JoinHandle, spawn};
-use std::sync::mpsc::{Receiver, channel};
-use std::io::{self, BufRead};
-extern crate itertools;
-use self::itertools::Itertools;
-use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{Receiver, Sender, TryRecvError, channel};
+
+extern crate serde_json;
+use self::serde_json::de::from_str;
+
+extern crate zmq;
+use self::zmq::Socket;
+
+#[path = "../../shared/ipc.rs"]
+mod ipc;
 
 extern crate either;
 
+pub struct SocketLend {
+    socket: Option<Socket>,
+    socket_return: Sender<Socket>,
+}
+
+impl SocketLend {
+    pub fn msg(&mut self, m: &str) {
+        self.socket.as_mut().unwrap().send_str(m, 0).unwrap_or_else(|e| {
+            println!("Warning: Unable to send message over return socket: {}", e);
+        });
+    }
+}
+
+impl Drop for SocketLend {
+    fn drop(&mut self) {
+        self.msg("");
+        self.socket_return.send(self.socket.take().unwrap()).unwrap_or_else(|e| {
+            println!("Warning: Failed to return socket; cli now unavailable: {}", e);
+        });
+    }
+}
+
 pub enum Decision {
-    None,
     ImportLines(String),
     ShowCategories,
-    ResetCursor,
     Respond,
     Tell(String),
     ConnectServer,
@@ -23,32 +48,44 @@ pub enum Decision {
 
 pub fn new() -> Iter {
     let (sender, receiver) = channel();
+    let (socket_return, socket_receiver) = channel();
     Iter{
         _thread: spawn(move || {
-            let stdin = io::stdin();
-            for line in stdin.lock().lines() {
-                match line {
-                    Ok(s) => {
-                        let params = s.split('`')
-                            .enumerate()
-                            .flat_map(|(iter, s)| {
-                                // If we are not in a quotation
-                                if iter % 2 == 0 {
-                                    either::Left(s.split(' '))
-                                } else {
-                                    use std::iter::once;
-                                    either::Right(once(s))
+            let mut context = zmq::Context::new();
+            // Create pair socket which allows only one connection at a time
+            let mut socket = context.socket(zmq::PAIR)
+                .unwrap_or_else(|e| panic!("Error: Failed to open zmq socket: {}", e));
+            // Attempt to bind ipc file to socket
+            socket.bind(ipc::PATH).unwrap_or_else(|e| panic!("Error: Failed to connect to ipc file: {}", e));
+            // Receive commands
+            loop {
+                match socket.recv_string(0) {
+                    Ok(m) => {
+                        match m {
+                            Ok(s) => {
+                                // Parse JSON into string vector
+                                let v = match from_str::<Vec<String>>(&s) {
+                                    Ok(v) => v,
+                                    Err(e) => {
+                                        println!("Ignored: Unable to parse cli command from JSON: {}", e);
+                                        continue;
+                                    },
+                                };
+                                // Send the command vector along with the socket
+                                match sender.send((v, SocketLend{
+                                    socket: Some(socket),
+                                    socket_return: socket_return.clone(),
+                                })) {
+                                    Ok(_) => {},
+                                    Err(e) => panic!("Error: IPC thread unable to send: {}", e),
                                 }
-                            })
-                            .filter(|s| !s.is_empty()).map(|s| s.to_string()).collect_vec();
-                        if sender.send(params).is_err() {
-                            break;
+                            },
+                            Err(_) => println!("Ignored: Unable to parse cli command from JSON"),
                         }
                     },
-                    Err(_) => {
-                        break;
-                    }
+                    Err(e) => println!("Warning: Failed to get command: {}", e),
                 }
+                socket = socket_receiver.recv().unwrap_or_else(|e| panic!("Fatal: Unable to retrieve socket: {}", e));
             }
         }),
         receiver: receiver,
@@ -57,185 +94,188 @@ pub fn new() -> Iter {
 
 pub struct Iter {
     _thread: JoinHandle<()>,
-    receiver: Receiver<Vec<String>>,
+    receiver: Receiver<(Vec<String>, SocketLend)>,
 }
 
 impl Iterator for Iter {
-    type Item = Decision;
+    type Item = Option<(Decision, SocketLend)>;
 
-    fn next(&mut self) -> Option<Decision> {
+    fn next(&mut self) -> Option<Self::Item> {
         match self.receiver.try_recv() {
-            Ok(params) => {
-                let help = || {
-                    println!("Available commands: import, connect, list, respond, tell, get, set");
-                    Some(Decision::ResetCursor)
+            Ok((params, mut socket)) => {
+                // let socket_fail = || panic!("Warning: Failed to respond to command");
+
+                let help = |s: &mut SocketLend| {
+                    s.msg("Available commands: import, connect, list, respond, tell, get, set");
                 };
 
                 match params.len() {
                     0 => {
-                        help()
+                        help(&mut socket);
+                        Some(None)
                     },
                     _ => {
                         match &*params[0] {
                             "help" => {
-                                help()
+                                help(&mut socket);
+                                Some(None)
                             },
                             "import" => {
                                 if params.len() < 2 {
-                                    println!("Usage: import <import type>");
-                                    println!("Available import types: lines");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: import <import type>");
+                                    socket.msg("Available import types: lines");
+                                    Some(None)
                                 } else {
                                     match &*params[1] {
                                         "lines" => {
                                             if params.len() != 3 {
-                                                println!("Usage: import lines <filname>");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Usage: import lines <filname>");
+                                                Some(None)
                                             } else {
-                                                println!("Importing lines from `{}`...", params[2]);
-                                                Some(Decision::ImportLines(params[2].to_string()))
+                                                socket.msg(&format!("Importing lines from `{}`...", params[2]));
+                                                Some(Some((Decision::ImportLines(params[2].to_string()), socket)))
                                             }
                                         },
                                         _ => {
-                                            println!("Ignored: Unrecognized import type");
-                                            Some(Decision::ResetCursor)
+                                            socket.msg("Ignored: Unrecognized import type");
+                                            Some(None)
                                         },
                                     }
                                 }
                             },
                             "set" => {
                                 if params.len() < 2 {
-                                    println!("Usage: set <value>");
-                                    println!("Values: cc_ratio");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: set <value>");
+                                    socket.msg("Values: cc_ratio");
+                                    Some(None)
                                 } else {
                                     match &*params[1] {
                                         "cc_ratio" => {
                                             if params.len() != 3 {
-                                                println!("Usage: set cc_ratio <ratio>");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Usage: set cc_ratio <ratio>");
+                                                Some(None)
                                             } else {
                                                 match params[2].parse::<f64>() {
                                                     Ok(f) => {
-                                                        Some(Decision::ChangeCocategoryRatio(f))
+                                                        Some(Some((Decision::ChangeCocategoryRatio(f), socket)))
                                                     },
                                                     Err(e) => {
-                                                        println!("Ignored: Error converting value: {}", e);
-                                                        Some(Decision::ResetCursor)
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
                                                     },
                                                 }
                                             }
                                         },
                                         _ => {
-                                            println!("Ignored: Unrecognized set value");
-                                            Some(Decision::ResetCursor)
+                                            socket.msg("Ignored: Unrecognized set value");
+                                            Some(None)
                                         },
                                     }
                                 }
                             },
                             "get" => {
                                 if params.len() < 2 {
-                                    println!("Usage: get <value>");
-                                    println!("Values: cc_ratio");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: get <value>");
+                                    socket.msg("Values: cc_ratio");
+                                    Some(None)
                                 } else {
                                     match &*params[1] {
                                         "cc_ratio" => {
                                             if params.len() != 2 {
-                                                println!("Usage: get cc_ratio");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Usage: get cc_ratio");
+                                                Some(None)
                                             } else {
-                                                Some(Decision::GetCocategoryRatio)
+                                                Some(Some((Decision::GetCocategoryRatio, socket)))
                                             }
                                         },
                                         _ => {
-                                            println!("Ignored: Unrecognized get value");
-                                            Some(Decision::ResetCursor)
+                                            socket.msg("Ignored: Unrecognized get value");
+                                            Some(None)
                                         },
                                     }
                                 }
                             },
                             "connect" => {
                                 if params.len() < 2 {
-                                    println!("Ignored: connect takes at least a connect type");
-                                    println!("Connect types: server, irc, discord");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Ignored: connect takes at least a connect type");
+                                    socket.msg("Connect types: server, irc, discord");
+                                    Some(None)
                                 } else {
                                     match &*params[1] {
                                         "server" => {
                                             if params.len() != 2 {
-                                                println!("Ignored: no extra parameters needed");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Ignored: no extra parameters needed");
+                                                Some(None)
                                             } else {
-                                                Some(Decision::ConnectServer)
+                                                Some(Some((Decision::ConnectServer, socket)))
                                             }
                                         },
                                         "irc" => {
                                             if params.len() != 3 {
-                                                println!("Usage: connect irc <config>");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Usage: connect irc <config>");
+                                                Some(None)
                                             } else {
-                                                Some(Decision::ConnectIrc(params[2].to_string()))
+                                                Some(Some((Decision::ConnectIrc(params[2].to_string()), socket)))
                                             }
                                         },
                                         "discord" => {
                                             if params.len() != 3 {
-                                                println!("Usage: connect discord <config>");
-                                                Some(Decision::ResetCursor)
+                                                socket.msg("Usage: connect discord <config>");
+                                                Some(None)
                                             } else {
-                                                Some(Decision::ConnectDiscord(params[2].to_string()))
+                                                Some(Some((Decision::ConnectDiscord(params[2].to_string()), socket)))
                                             }
                                         },
                                         _ => {
-                                            println!("Ignored: Unrecognized connect type");
-                                            Some(Decision::ResetCursor)
+                                            socket.msg("Ignored: Unrecognized connect type");
+                                            Some(None)
                                         },
                                     }
                                 }
                             },
                             "list" => {
                                 if params.len() != 2 {
-                                    println!("Usage: list <list type>");
-                                    println!("Available list types: categories");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: list <list type>");
+                                    socket.msg("Available list types: categories");
+                                    Some(None)
                                 } else {
                                     match &*params[1] {
                                         "categories" => {
-                                            Some(Decision::ShowCategories)
+                                            Some(Some((Decision::ShowCategories, socket)))
                                         },
                                         _ => {
-                                            println!("Ignored: Unrecognized list type");
-                                            Some(Decision::ResetCursor)
+                                            socket.msg("Ignored: Unrecognized list type");
+                                            Some(None)
                                         },
                                     }
                                 }
                             },
                             "respond" => {
                                 if params.len() != 1 {
-                                    println!("Usage: respond");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: respond");
+                                    Some(None)
                                 } else {
-                                    Some(Decision::Respond)
+                                    Some(Some((Decision::Respond, socket)))
                                 }
                             },
                             "tell" => {
                                 if params.len() != 2 {
-                                    println!("Usage: tell <message>");
-                                    Some(Decision::ResetCursor)
+                                    socket.msg("Usage: tell <message>");
+                                    Some(None)
                                 } else {
-                                    Some(Decision::Tell(params[1].to_string()))
+                                    Some(Some((Decision::Tell(params[1].to_string()), socket)))
                                 }
                             },
                             _ => {
-                                println!("Ignored: Unrecognized command");
-                                Some(Decision::ResetCursor)
+                                socket.msg("Ignored: Unrecognized command");
+                                Some(None)
                             },
                         }
                     }
                 }
             },
             Err(TryRecvError::Empty) => {
-                Some(Decision::None)
+                Some(None)
             },
             Err(TryRecvError::Disconnected) => {
                 None

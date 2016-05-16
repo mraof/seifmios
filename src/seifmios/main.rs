@@ -4,7 +4,7 @@ extern crate serde;
 extern crate rand;
 extern crate crossbeam;
 
-use std::io::{BufReader, BufRead, stdout, Write};
+use std::io::{BufReader, BufRead};
 use std::fs::File;
 use std::sync::mpsc::{channel, TryRecvError};
 use std::thread::spawn;
@@ -13,10 +13,7 @@ mod text;
 mod cli;
 mod chat;
 
-fn reset() {
-    print!(">");
-    stdout().flush().unwrap();
-}
+const THINK_TIMES: i32 = 20;
 
 fn main() {
     use rand::SeedableRng;
@@ -25,11 +22,72 @@ fn main() {
     let me = lex.author(console.clone(), "me".to_string());
     let (sender, receiver) = channel();
     let mut server_running = false;
-    reset();
-    for decision in cli::new() {
-        use cli::Decision;
-        match decision {
-            Decision::None => {
+    for response in cli::new() {
+        match response {
+            Some((decision, mut socket)) => {
+                use cli::Decision;
+                match decision {
+                    Decision::ImportLines(filename) => {
+                        let author = lex.author(console.clone(), filename.clone());
+                        let file = File::open(&filename);
+                        match file {
+                            Ok(f) => {
+                                for (index, line) in BufReader::new(f).lines().enumerate() {
+                                    match line {
+                                        Ok(s) => {
+                                            lex.tell(console.clone(), author.clone(), s);
+                                            if (index + 1) % 10000 == 0 {
+                                                socket.msg(&format!("On line {} of {}", index + 1, filename));
+                                            }
+                                        },
+                                        Err(_) => {
+                                            socket.msg(&format!("Ignored: File had read error on line {}", index + 1));
+                                        },
+                                    }
+                                }
+                            },
+                            Err(_) => {
+                                socket.msg("Ignored: Unable to open file");
+                            },
+                        }
+                    },
+                    Decision::ShowCategories => {
+                        lex.show_categories(&mut socket);
+                    },
+                    Decision::Respond => {
+                        if let Some(s) = lex.initiate(console.clone()) {
+                            socket.msg(&format!("Original: {}\nResponse: {}", s.0, s.1));
+                        }
+                    },
+                    Decision::Tell(s) => {
+                        lex.tell(console.clone(), me.clone(), s);
+                    },
+                    Decision::ConnectServer => {
+                        if server_running {
+                            socket.msg("Ignored: Server already running");
+                        } else {
+                            let sender = sender.clone();
+                            spawn(move || chat::server::listen(sender));
+                            server_running = true;
+                        }
+                    },
+                    Decision::ConnectIrc(config) => {
+                        let sender = sender.clone();
+                        spawn(move || chat::irc::connect(sender, config));
+                    },
+                    Decision::ConnectDiscord(config) => {
+                        let sender = sender.clone();
+                        spawn(move || chat::discord::connect(sender, config));
+                    },
+                    Decision::ChangeCocategoryRatio(f) => {
+                        lex.cocategorization_ratio = f;
+                    },
+                    Decision::GetCocategoryRatio => {
+                        socket.msg(&format!("{}", lex.cocategorization_ratio));
+                    },
+                }
+            },
+            None => {
                 match receiver.try_recv() {
                     Ok(chat::ReplyMessage(message, replier)) => {
                         let source = lex.source(message.source.clone());
@@ -38,89 +96,18 @@ fn main() {
                         if let Some(reply_sender) = replier {
                             if let Some(reply) = lex.respond(source) {
                                 if reply_sender.send(reply.1).is_err() {
-                                    println!("");
                                     println!("Warning: Reply sender from {} closed unexpectedly", message.source);
-                                    reset();
                                 }
                             }
                         }
                     },
                     Err(TryRecvError::Empty) => {},
-                    Err(TryRecvError::Disconnected) => {
-                        panic!("Fatal: The main sender just disappeared!?");
-                    },
+                    Err(TryRecvError::Disconnected) => panic!("Fatal: The main sender just disappeared!?"),
                 }
-                lex.think();
-            },
-            Decision::ImportLines(filename) => {
-                let author = lex.author(console.clone(), filename.clone());
-                let file = File::open(&filename);
-                match file {
-                    Ok(f) => {
-                        for (index, line) in BufReader::new(f).lines().enumerate() {
-                            match line {
-                                Ok(s) => {
-                                    lex.tell(console.clone(), author.clone(), s);
-                                    if (index + 1) % 10000 == 0 {
-                                        println!("On line {} of {}", index + 1, filename);
-                                    }
-                                },
-                                Err(_) => {
-                                    println!("Ignoring: File had read error on line {}", index + 1);
-                                },
-                            }
-                        }
-                    },
-                    Err(_) => {
-                        println!("Ignoring: Unable to open file");
-                    },
+                // Think several times
+                for _ in 0..THINK_TIMES {
+                    lex.think();
                 }
-                reset();
-            },
-            Decision::ShowCategories => {
-                lex.show_categories();
-                reset();
-            },
-            Decision::Respond => {
-                if let Some(s) = lex.initiate(console.clone()) {
-                    println!("Original: {}\nResponse: {}", s.0, s.1);
-                }
-                reset();
-            },
-            Decision::Tell(s) => {
-                lex.tell(console.clone(), me.clone(), s);
-                reset();
-            },
-            Decision::ResetCursor => {
-                reset();
-            },
-            Decision::ConnectServer => {
-                if server_running {
-                    println!("Ignored: Server already running");
-                } else {
-                    let sender = sender.clone();
-                    spawn(move || chat::server::listen(sender));
-                    server_running = true;
-                }
-                reset();
-            },
-            Decision::ConnectIrc(config) => {
-                let sender = sender.clone();
-                spawn(move || chat::irc::connect(sender, config));
-                reset();
-            },
-            Decision::ConnectDiscord(config) => {
-                let sender = sender.clone();
-                spawn(move || chat::discord::connect(sender, config));
-                reset();
-            },
-            Decision::ChangeCocategoryRatio(f) => {
-                lex.cocategorization_ratio = f;
-                reset();
-            },
-            Decision::GetCocategoryRatio => {
-                println!("{}", lex.cocategorization_ratio);
-                reset();
             },
         }
     }
