@@ -27,6 +27,9 @@ fn main() {
             Some((decision, mut socket)) => {
                 use cli::Decision;
                 match decision {
+                    Decision::Quit => {
+                        return;
+                    },
                     Decision::ImportLines(filename) => {
                         let author = lex.author(console.clone(), filename.clone());
                         let file = File::open(&filename);

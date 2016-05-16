@@ -35,6 +35,7 @@ impl Drop for SocketLend {
 }
 
 pub enum Decision {
+    Quit,
     ImportLines(String),
     ShowCategories,
     Respond,
@@ -106,7 +107,7 @@ impl Iterator for Iter {
                 // let socket_fail = || panic!("Warning: Failed to respond to command");
 
                 let help = |s: &mut SocketLend| {
-                    s.msg("Available commands: import, connect, list, respond, tell, get, set");
+                    s.msg("Available commands: quit, import, connect, list, respond, tell, get, set");
                 };
 
                 match params.len() {
@@ -119,6 +120,14 @@ impl Iterator for Iter {
                             "help" => {
                                 help(&mut socket);
                                 Some(None)
+                            },
+                            "quit" => {
+                                if params.len() != 1 {
+                                    socket.msg("Usage: quit");
+                                    Some(None)
+                                } else {
+                                    Some(Some((Decision::Quit, socket)))
+                                }
                             },
                             "import" => {
                                 if params.len() < 2 {
