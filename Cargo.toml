@@ -7,6 +7,14 @@ authors = ["Mraof <mraof@mraof.com>", "Geordon Worley <vadixidav@gmail.com>"]
 keywords = ["chat", "bot", "chatbot", "seifmios"]
 license = "BSD-2-Clause"
 
+[[bin]]
+name = "seifmios"
+path = "src/seifmios/main.rs"
+
+[[bin]]
+name = "climios"
+path = "src/climios/main.rs"
+
 [dependencies]
 rand = "0.3.14"
 crossbeam = "0.2.9"
@@ -14,7 +22,8 @@ itertools = "0.4.13"
 either = "0.1.6"
 irc = "0.11.3"
 discord = "0.5.0"
+zmq = {git = "https://github.com/erickt/rust-zmq"}
 serde = "0.7.4"
 serde_json = "0.7.0"
 serde_macros = "0.7.4"
-scell = {version = "1.0.0", features = []}
+scell = {version = "1.0.0", features = ["unchecked"]}

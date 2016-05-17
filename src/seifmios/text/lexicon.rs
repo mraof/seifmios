@@ -13,17 +13,19 @@ use super::{
     SerialWordInstance,
 };
 
+use super::super::cli::SocketLend;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 
-use std::rc::Rc;
-use std::cell::RefCell;
+const RATIO_TO_COCATEGORIZE: f64 = 0.15;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
     pub fn new(rng: R) -> Lexicon<R> {
         Lexicon{
             rng: rng,
+            cocategorization_ratio: RATIO_TO_COCATEGORIZE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -143,60 +145,93 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Say something based on the conversation context
-    pub fn respond(&mut self, source: SourceCell) -> Option<String> {
+    pub fn respond(&mut self, source: SourceCell) -> Option<(String, String)> {
+        use std::collections::VecDeque;
         let base = match self.rng.choose(&self.messages[..]) {
             Some(m) => m.clone(),
             None => return None,
         };
 
-        let bborrow = base.borrow();
+        // Make a double-ended vec for building the message out of categories
+        let mut instances = VecDeque::new();
 
-        Some(
-            bborrow.instances.iter()
+        // Push the base instance onto the categories vec
+        instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
+
+        let mut instance_chooser = |category: CategoryCell| {
+            let b = category.borrow();
+            // Find the count of how many word instances exist total
+            let mut count = b.instances.len();
+            for cocategory in &b.cocategories {
+                count += cocategory.borrow().instances.len();
+            }
+            // Generate an index based on the count
+            let mut i = self.rng.gen_range(0, count);
+            match b.instances.get(i) {
+                // It was in the original category
+                Some(ins) => ins.clone(),
+                // It was in a cocategory
+                None => {
+                    // Subtract the cocategory length from the index
+                    i -= b.instances.len();
+                    for cocategory in &b.cocategories {
+                        let b = cocategory.borrow();
+                        // If it was in this category
+                        if let Some(ins) = b.instances.get(i) {
+                            // Clone the instance and return it
+                            return ins.clone();
+                        }
+                        // Otherwise subtract by the amount of instances in this cocategory
+                        i -= b.instances.len();
+                    }
+                    // The index should point to some category, so this is unreachable
+                    unreachable!();
+                },
+            }
+        };
+
+        // Iterate forwards weaving between messages and adding instances to the vec
+        loop {
+            let ins = instances.back().unwrap().borrow().next_instance();
+            if let Some(i) = ins {
+                instances.push_back(instance_chooser(i.borrow().category.clone()));
+            } else {
+                break;
+            }
+        }
+        // Iterate backwards to reach the beginning of the message
+        loop {
+            let ins = instances.front().unwrap().borrow().prev_instance();
+            if let Some(i) = ins {
+                instances.push_front(instance_chooser(i.borrow().category.clone()));
+            } else {
+                break;
+            }
+        }
+
+        Some((
+            instances.iter()
+                .map(|instance| {
+                    let ins = instance.borrow();
+                    let word = ins.word.borrow();
+                    word.name.clone()
+                })
+                .join(" "),
+            instances.iter()
                 .map(|instance| instance.borrow().category.clone())
                 // TODO: Allow random choosing from co-category instances as well
-                .map(|category| {
-                    let b = category.borrow();
-                    // Find the count of how many word instances exist total
-                    let mut count = b.instances.len();
-                    for cocategory in &b.cocategories {
-                        count += cocategory.borrow().instances.len();
-                    }
-                    // Generate an index based on the count
-                    let mut i = self.rng.gen_range(0, count);
-                    match b.instances.get(i) {
-                        // It was in the original category
-                        Some(ins) => ins.clone(),
-                        // It was in a cocategory
-                        None => {
-                            // Subtract the cocategory length from the index
-                            i -= b.instances.len();
-                            for cocategory in &b.cocategories {
-                                let b = cocategory.borrow();
-                                // If it was in this category
-                                if let Some(ins) = b.instances.get(i) {
-                                    // Clone the instance and return it
-                                    return ins.clone();
-                                }
-                                // Otherwise subtract by the amount of instances in this cocategory
-                                i -= b.instances.len();
-                            }
-                            // The index should point to some category, so this is unreachable
-                            unreachable!();
-                        },
-                    }
-                })
+                .map(|category| instance_chooser(category))
                 .map(|instance| {
                     let ins = instance.borrow();
                     let word = ins.word.borrow();
                     word.name.clone()
                 })
                 .join(" ")
-        )
+        ))
     }
 
     /// Have seifmios attempt to initiate a conversation at a source, but it may fail.
-    pub fn initiate(&mut self, source: SourceCell) -> Option<String> {
+    pub fn initiate(&mut self, source: SourceCell) -> Option<(String, String)> {
         self.switch(source.clone());
         self.respond(source)
     }
@@ -209,12 +244,10 @@ impl<R: rand::Rng> Lexicon<R> {
             None => return,
         };
 
-        self.learn(m);
-
         // Get two random categories (we already know messages exist from above)
         Category::cocategorize((
             {
-                let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                let b = m.borrow();
                 let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
                 b.category.clone()
             },
@@ -223,7 +256,7 @@ impl<R: rand::Rng> Lexicon<R> {
                 let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
                 b.category.clone()
             },
-        ));
+        ), self.cocategorization_ratio);
     }
 
     pub fn learn(&mut self, message: MessageCell) {
@@ -256,7 +289,7 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Print all multiple categories and return the amount of categories total
-    pub fn show_categories(&self) -> usize {
+    pub fn show_categories(&self, socket: &mut SocketLend) -> usize {
         let mut set = BTreeSet::new();
         for message in &self.messages {
             for instance in &message.borrow().instances {
@@ -270,18 +303,18 @@ impl<R: rand::Rng> Lexicon<R> {
         for cat in set {
             let catr = cat.borrow();
             if catr.instances.len() != 1 {
-                println!("Category:");
+                socket.msg("Category:");
                 for cocategory in &catr.cocategories {
-                    println!("\tCocategory:");
+                    socket.msg("\tCocategory:");
                     let catr = cocategory.borrow();
                     for instance in &catr.instances {
                         let ib = instance.borrow();
-                        println!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
+                        socket.msg(&format!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
                     }
                 }
                 for instance in &catr.instances {
                     let ib = instance.borrow();
-                    println!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow());
+                    socket.msg(&format!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
                 }
             }
         }
