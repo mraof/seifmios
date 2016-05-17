@@ -11,6 +11,7 @@ use itertools::Itertools;
 extern crate zmq;
 
 use std::env::args;
+use std::path::*;
 
 #[path = "../shared/ipc.rs"]
 mod ipc;
@@ -31,8 +32,73 @@ fn main() {
         Err(e) => panic!("Error: Failed to connect to ipc file: {}", e),
     }
 
+    // Make vector of strings
+    let mut v = args().skip(1).map(|s| s.to_string()).collect_vec();
+
+    match v.len() {
+        0 => {},
+        _ => {
+            match v[0].as_str() {
+                "import" => {
+                    match v.len() {
+                        1 => {}
+                        _ => {
+                            match v[1].as_str() {
+                                "lines" => {
+                                    if v.len() == 3 {
+                                        let new_path = Path::new(&v[2])
+                                            .canonicalize()
+                                            .unwrap_or_else(|e| panic!("Error: Unable to canonicalize path: {}", e))
+                                            .to_str()
+                                            .unwrap_or_else(|| panic!("Error: Failed to convert path to string"))
+                                            .to_string();
+                                        v[2] = new_path;
+                                    }
+                                },
+                                _ => {}
+                            }
+                        },
+                    }
+                },
+                "connect" => {
+                    match v.len() {
+                        1 => {}
+                        _ => {
+                            match v[1].as_str() {
+                                "irc" => {
+                                    if v.len() == 3 {
+                                        let new_path = Path::new(&v[2])
+                                            .canonicalize()
+                                            .unwrap_or_else(|e| panic!("Error: Unable to canonicalize path: {}", e))
+                                            .to_str()
+                                            .unwrap_or_else(|| panic!("Error: Failed to convert path to string"))
+                                            .to_string();
+                                        v[2] = new_path;
+                                    }
+                                },
+                                "discord" => {
+                                    if v.len() == 3 {
+                                        let new_path = Path::new(&v[2])
+                                            .canonicalize()
+                                            .unwrap_or_else(|e| panic!("Error: Unable to canonicalize path: {}", e))
+                                            .to_str()
+                                            .unwrap_or_else(|| panic!("Error: Failed to convert path to string"))
+                                            .to_string();
+                                        v[2] = new_path;
+                                    }
+                                },
+                                _ => {}
+                            }
+                        },
+                    }
+                },
+                _ => {},
+            }
+        },
+    }
+
     // Aquire JSON vector string from args
-    let s = match to_string(&args().skip(1).map(|s| s.to_string()).collect_vec()) {
+    let s = match to_string(&v) {
         Ok(s) => s,
         Err(e) => panic!("Error: JSON parsing failure: {}", e),
     };
