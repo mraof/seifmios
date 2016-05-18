@@ -136,13 +136,15 @@ struct SerialMessage {
 #[derive(Default)]
 pub struct Category {
     instances: Vec<InstanceCell>,
-    cocategories: BTreeSet<CategoryCell>,
+    precocategories: BTreeSet<CategoryCell>,
+    postcocategories: BTreeSet<CategoryCell>,
 }
 
 #[derive(Deserialize, Serialize)]
 struct SerialCategory {
     instances: Vec<u64>,
-    cocategories: Vec<u64>,
+    precocategories: Vec<u64>,
+    postcocategories: Vec<u64>,
 }
 
 pub struct Word {

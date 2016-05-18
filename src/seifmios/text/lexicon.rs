@@ -9,7 +9,8 @@ use super::super::cli::SocketLend;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 
-const RATIO_TO_COCATEGORIZE: f64 = 0.15;
+const RATIO_TO_COCATEGORIZE: f64 = 0.8;
+const COCATEGORY_TRAVEL_DISTANCE: i32 = 1;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
@@ -149,15 +150,14 @@ impl<R: rand::Rng> Lexicon<R> {
         // Push the base instance onto the categories vec
         instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
 
-        let mut instance_chooser = |category: CategoryCell| {
-            let b = category.borrow();
+        let forward_instance_chooser = |b: &Category, rng: &mut R| {
             // Find the count of how many word instances exist total
             let mut count = b.instances.len();
-            for cocategory in &b.cocategories {
+            for cocategory in &b.precocategories {
                 count += cocategory.borrow().instances.len();
             }
             // Generate an index based on the count
-            let mut i = self.rng.gen_range(0, count);
+            let mut i = rng.gen_range(0, count);
             match b.instances.get(i) {
                 // It was in the original category
                 Some(ins) => ins.clone(),
@@ -165,7 +165,38 @@ impl<R: rand::Rng> Lexicon<R> {
                 None => {
                     // Subtract the cocategory length from the index
                     i -= b.instances.len();
-                    for cocategory in &b.cocategories {
+                    for cocategory in &b.precocategories {
+                        let b = cocategory.borrow();
+                        // If it was in this category
+                        if let Some(ins) = b.instances.get(i) {
+                            // Clone the instance and return it
+                            return ins.clone();
+                        }
+                        // Otherwise subtract by the amount of instances in this cocategory
+                        i -= b.instances.len();
+                    }
+                    // The index should point to some category, so this is unreachable
+                    unreachable!();
+                },
+            }
+        };
+
+        let backward_instance_chooser = |b: &Category, rng: &mut R| {
+            // Find the count of how many word instances exist total
+            let mut count = b.instances.len();
+            for cocategory in &b.postcocategories {
+                count += cocategory.borrow().instances.len();
+            }
+            // Generate an index based on the count
+            let mut i = rng.gen_range(0, count);
+            match b.instances.get(i) {
+                // It was in the original category
+                Some(ins) => ins.clone(),
+                // It was in a cocategory
+                None => {
+                    // Subtract the cocategory length from the index
+                    i -= b.instances.len();
+                    for cocategory in &b.postcocategories {
                         let b = cocategory.borrow();
                         // If it was in this category
                         if let Some(ins) = b.instances.get(i) {
@@ -185,7 +216,8 @@ impl<R: rand::Rng> Lexicon<R> {
         loop {
             let ins = instances.back().unwrap().borrow().next_instance();
             if let Some(i) = ins {
-                instances.push_back(instance_chooser(i.borrow().category.clone()));
+                let b = i.borrow();
+                instances.push_back(forward_instance_chooser(&b.category.borrow(), &mut self.rng));
             } else {
                 break;
             }
@@ -194,7 +226,8 @@ impl<R: rand::Rng> Lexicon<R> {
         loop {
             let ins = instances.front().unwrap().borrow().prev_instance();
             if let Some(i) = ins {
-                instances.push_front(instance_chooser(i.borrow().category.clone()));
+                let b = i.borrow();
+                instances.push_front(backward_instance_chooser(&b.category.borrow(), &mut self.rng));
             } else {
                 break;
             }
@@ -209,9 +242,20 @@ impl<R: rand::Rng> Lexicon<R> {
                 })
                 .join(" "),
             instances.iter()
-                .map(|instance| instance.borrow().category.clone())
-                // TODO: Allow random choosing from co-category instances as well
-                .map(|category| instance_chooser(category))
+                .cloned()
+                .map(|mut instance| {
+                    for _ in 0..COCATEGORY_TRAVEL_DISTANCE {
+                        instance = {
+                            let b = instance.borrow();
+                            if self.rng.gen_range(0, 2) == 0 {
+                                backward_instance_chooser(&b.category.borrow(), &mut self.rng)
+                            } else {
+                                forward_instance_chooser(&b.category.borrow(), &mut self.rng)
+                            }
+                        };
+                    }
+                    instance
+                })
                 .map(|instance| {
                     let ins = instance.borrow();
                     let word = ins.word.borrow();
@@ -295,8 +339,16 @@ impl<R: rand::Rng> Lexicon<R> {
             let catr = cat.borrow();
             if catr.instances.len() != 1 {
                 socket.msg("Category:");
-                for cocategory in &catr.cocategories {
-                    socket.msg("\tCocategory:");
+                for cocategory in &catr.precocategories {
+                    socket.msg("\tPre-Cocategory:");
+                    let catr = cocategory.borrow();
+                    for instance in &catr.instances {
+                        let ib = instance.borrow();
+                        socket.msg(&format!("\t\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
+                    }
+                }
+                for cocategory in &catr.postcocategories {
+                    socket.msg("\tPost-Cocategory:");
                     let catr = cocategory.borrow();
                     for instance in &catr.instances {
                         let ib = instance.borrow();
