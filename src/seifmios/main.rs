@@ -82,11 +82,17 @@ fn main() {
                         let sender = sender.clone();
                         spawn(move || chat::discord::connect(sender, config));
                     },
-                    Decision::ChangeCocategoryRatio(f) => {
+                    Decision::SetCocategoryRatio(f) => {
                         lex.cocategorization_ratio = f;
                     },
                     Decision::GetCocategoryRatio => {
                         socket.msg(&format!("{}", lex.cocategorization_ratio));
+                    },
+                    Decision::SetTravelDistance(steps) => {
+                        lex.cocategory_travel_distance = steps;
+                    },
+                    Decision::GetTravelDistance => {
+                        socket.msg(&format!("{}", lex.cocategory_travel_distance));
                     },
                 }
             },

@@ -43,6 +43,7 @@ pub enum Mismatch<T> {
 pub struct Lexicon<R: Rng> {
     rng: R,
     pub cocategorization_ratio: f64,
+    pub cocategory_travel_distance: i32,
     words: BTreeMap<String, WordCell>,
     sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,

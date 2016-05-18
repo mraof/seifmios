@@ -43,8 +43,10 @@ pub enum Decision {
     ConnectServer,
     ConnectIrc(String),
     ConnectDiscord(String),
-    ChangeCocategoryRatio(f64),
+    SetCocategoryRatio(f64),
     GetCocategoryRatio,
+    SetTravelDistance(i32),
+    GetTravelDistance,
 }
 
 pub fn new() -> Iter {
@@ -155,7 +157,7 @@ impl Iterator for Iter {
                             "set" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: set <value>");
-                                    socket.msg("Values: cc_ratio");
+                                    socket.msg("Values: cc_ratio, cc_travel");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -166,7 +168,23 @@ impl Iterator for Iter {
                                             } else {
                                                 match params[2].parse::<f64>() {
                                                     Ok(f) => {
-                                                        Some(Some((Decision::ChangeCocategoryRatio(f), socket)))
+                                                        Some(Some((Decision::SetCocategoryRatio(f), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
+                                        "cc_travel" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set cc_travel <steps>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<i32>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetTravelDistance(steps), socket)))
                                                     },
                                                     Err(e) => {
                                                         socket.msg(&format!("Ignored: Error converting value: {}\n", e));
@@ -185,7 +203,7 @@ impl Iterator for Iter {
                             "get" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: get <value>");
-                                    socket.msg("Values: cc_ratio");
+                                    socket.msg("Values: cc_ratio, cc_travel");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -195,6 +213,14 @@ impl Iterator for Iter {
                                                 Some(None)
                                             } else {
                                                 Some(Some((Decision::GetCocategoryRatio, socket)))
+                                            }
+                                        },
+                                        "cc_travel" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get cc_travel");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetTravelDistance, socket)))
                                             }
                                         },
                                         _ => {

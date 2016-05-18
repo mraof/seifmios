@@ -18,6 +18,7 @@ impl<R: rand::Rng> Lexicon<R> {
         Lexicon{
             rng: rng,
             cocategorization_ratio: RATIO_TO_COCATEGORIZE,
+            cocategory_travel_distance: COCATEGORY_TRAVEL_DISTANCE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -244,7 +245,7 @@ impl<R: rand::Rng> Lexicon<R> {
             instances.iter()
                 .cloned()
                 .map(|mut instance| {
-                    for _ in 0..COCATEGORY_TRAVEL_DISTANCE {
+                    for _ in 0..self.cocategory_travel_distance {
                         instance = {
                             let b = instance.borrow();
                             if self.rng.gen_range(0, 2) == 0 {
