@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Entry;
 
 const RATIO_TO_COCATEGORIZE: f64 = 0.8;
-const COCATEGORY_TRAVEL_DISTANCE: i32 = 1;
+const COCATEGORY_TRAVEL_DISTANCE: i32 = 4;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.

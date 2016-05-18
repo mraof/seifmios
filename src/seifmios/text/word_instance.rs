@@ -26,8 +26,6 @@ impl WordInstance {
                 i0.borrow().word == i1.borrow().word ||
                     Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category))
             },
-            // The sentence ends in both spots
-            (None, None) => true,
             _ => false,
         }
     }
@@ -44,8 +42,6 @@ impl WordInstance {
                 i0.borrow().word == i1.borrow().word ||
                     Category::are_precocategories((&i0.borrow().category, &i1.borrow().category))
             },
-            // The sentence ends in both spots
-            (None, None) => true,
             _ => false,
         }
     }
