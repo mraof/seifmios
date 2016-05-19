@@ -280,6 +280,8 @@ impl<R: rand::Rng> Lexicon<R> {
             None => return,
         };
 
+        self.learn(m.clone());
+
         // Get two random categories (we already know messages exist from above)
         Category::cocategorize((
             {
