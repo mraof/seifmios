@@ -94,6 +94,12 @@ fn main() {
                     Decision::GetTravelDistance => {
                         socket.msg(&format!("{}", lex.cocategory_travel_distance));
                     },
+                    Decision::SetCocategorizeMagnitude(cycles) => {
+                        lex.cocategorize_magnitude = cycles;
+                    },
+                    Decision::GetCocategorizeMagnitude => {
+                        socket.msg(&format!("{}", lex.cocategorize_magnitude));
+                    },
                     Decision::FindRelation(words) => {
                         lex.find_relation(words, &mut socket);
                     },

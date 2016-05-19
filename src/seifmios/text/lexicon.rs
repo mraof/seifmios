@@ -11,6 +11,7 @@ use std::collections::btree_map::Entry;
 
 const RATIO_TO_COCATEGORIZE: f64 = 0.8;
 const COCATEGORY_TRAVEL_DISTANCE: i32 = 4;
+const COCATEGORIZE_MAGNITUDE: i32 = 32;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
@@ -19,6 +20,7 @@ impl<R: rand::Rng> Lexicon<R> {
             rng: rng,
             cocategorization_ratio: RATIO_TO_COCATEGORIZE,
             cocategory_travel_distance: COCATEGORY_TRAVEL_DISTANCE,
+            cocategorize_magnitude: COCATEGORIZE_MAGNITUDE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -282,19 +284,21 @@ impl<R: rand::Rng> Lexicon<R> {
 
         self.learn(m.clone());
 
-        // Get two random categories (we already know messages exist from above)
-        Category::cocategorize((
-            {
-                let b = m.borrow();
-                let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                b.category.clone()
-            },
-            {
-                let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
-                let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                b.category.clone()
-            },
-        ), self.cocategorization_ratio);
+        for _ in 0..self.cocategorize_magnitude {
+            // Get two random categories (we already know messages exist from above)
+            Category::cocategorize((
+                {
+                    let b = m.borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+                {
+                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+            ), self.cocategorization_ratio);
+        }
     }
 
     pub fn learn(&mut self, message: MessageCell) {

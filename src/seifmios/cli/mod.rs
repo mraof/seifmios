@@ -47,6 +47,8 @@ pub enum Decision {
     GetCocategoryRatio,
     SetTravelDistance(i32),
     GetTravelDistance,
+    SetCocategorizeMagnitude(i32),
+    GetCocategorizeMagnitude,
     FindRelation((String, String)),
 }
 
@@ -158,7 +160,7 @@ impl Iterator for Iter {
                             "set" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: set <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -194,6 +196,22 @@ impl Iterator for Iter {
                                                 }
                                             }
                                         },
+                                        "cc_mag" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set cc_mag <cycles>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<i32>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetCocategorizeMagnitude(steps), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
                                         _ => {
                                             socket.msg("Ignored: Unrecognized set value");
                                             Some(None)
@@ -204,7 +222,7 @@ impl Iterator for Iter {
                             "get" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: get <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -222,6 +240,13 @@ impl Iterator for Iter {
                                                 Some(None)
                                             } else {
                                                 Some(Some((Decision::GetTravelDistance, socket)))
+                                            }
+                                        },"cc_mag" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get cc_mag");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetCocategorizeMagnitude, socket)))
                                             }
                                         },
                                         _ => {
