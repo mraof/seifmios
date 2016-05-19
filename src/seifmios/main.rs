@@ -94,6 +94,9 @@ fn main() {
                     Decision::GetTravelDistance => {
                         socket.msg(&format!("{}", lex.cocategory_travel_distance));
                     },
+                    Decision::FindRelation(words) => {
+                        lex.find_relation(words, &mut socket);
+                    },
                 }
             },
             None => {

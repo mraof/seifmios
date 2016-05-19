@@ -327,7 +327,7 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     /// Print all multiple categories and return the amount of categories total
-    pub fn show_categories(&self, socket: &mut SocketLend) -> usize {
+    pub fn show_categories(&self, socket: &mut SocketLend) {
         let mut set = BTreeSet::new();
         for message in &self.messages {
             for instance in &message.borrow().instances {
@@ -364,6 +364,68 @@ impl<R: rand::Rng> Lexicon<R> {
                 }
             }
         }
-        len
+    }
+
+    pub fn find_relation(&self, words: (String, String), socket: &mut SocketLend) {
+        let wls = (self.words.get(&words.0), self.words.get(&words.1));
+        match wls {
+            (Some(w0), Some(w1)) => {
+                let b = w0.borrow();
+                for instance in &b.instances {
+                    let b = instance.borrow();
+                    let cb = b.category.borrow();
+
+                    for cins in &cb.instances {
+                        if cins.borrow().word == *w1 {
+                            socket.msg("Category:");
+                            for instance in &cb.instances {
+                                let ib = instance.borrow();
+                                socket.msg(&format!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
+                            }
+                            break;
+                        }
+                    }
+
+                    // Check all the precategories
+                    for prec in &cb.precocategories {
+                        let cb = prec.borrow();
+                        for cins in &cb.instances {
+                            if cins.borrow().word == *w1 {
+                                socket.msg("Pre-Cocategory:");
+                                for instance in &cb.instances {
+                                    let ib = instance.borrow();
+                                    socket.msg(&format!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    // Check all the postcategories
+                    for postc in &cb.postcocategories {
+                        let cb = postc.borrow();
+                        for cins in &cb.instances {
+                            if cins.borrow().word == *w1 {
+                                socket.msg("Post-Cocategory:");
+                                for instance in &cb.instances {
+                                    let ib = instance.borrow();
+                                    socket.msg(&format!("\t{} ~ {}", ib.word.borrow().name, &*ib.message.borrow()));
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            },
+            (Some(_), None) => {
+                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.0));
+            },
+            (None, Some(_)) => {
+                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.1));
+            },
+            (None, None) => {
+                socket.msg("Ignored: Neither word could be found");
+            },
+        }
     }
 }

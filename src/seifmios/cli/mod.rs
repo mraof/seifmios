@@ -47,6 +47,7 @@ pub enum Decision {
     GetCocategoryRatio,
     SetTravelDistance(i32),
     GetTravelDistance,
+    FindRelation((String, String)),
 }
 
 pub fn new() -> Iter {
@@ -109,7 +110,7 @@ impl Iterator for Iter {
                 // let socket_fail = || panic!("Warning: Failed to respond to command");
 
                 let help = |s: &mut SocketLend| {
-                    s.msg("Available commands: quit, import, connect, list, respond, tell, get, set");
+                    s.msg("Available commands: quit, import, connect, list, respond, tell, get, set, find");
                 };
 
                 match params.len() {
@@ -299,6 +300,31 @@ impl Iterator for Iter {
                                     Some(None)
                                 } else {
                                     Some(Some((Decision::Tell(params[1].to_string()), socket)))
+                                }
+                            },
+                            "find" => {
+                                if params.len() < 2 {
+                                    socket.msg("Usage: find <type>");
+                                    socket.msg("Types: relation");
+                                    Some(None)
+                                } else {
+                                    match &*params[1] {
+                                        "relation" => {
+                                            if params.len() == 4 {
+                                                Some(Some((
+                                                    Decision::FindRelation((params[2].clone(), params[3].clone())),
+                                                    socket,
+                                                )))
+                                            } else {
+                                                socket.msg("Usage: find relation <word1> <word2>");
+                                                Some(None)
+                                            }
+                                        },
+                                        _ => {
+                                            socket.msg("Ignored: Unrecognized find type");
+                                            Some(None)
+                                        }
+                                    }
                                 }
                             },
                             _ => {
