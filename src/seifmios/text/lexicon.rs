@@ -305,22 +305,6 @@ impl<R: rand::Rng> Lexicon<R> {
         };
 
         self.learn(m.clone());
-
-        for _ in 0..self.cocategorize_magnitude {
-            // Get two random categories (we already know messages exist from above)
-            Category::cocategorize((
-                {
-                    let b = m.borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-                {
-                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-            ), self.cocategorization_ratio);
-        }
     }
 
     pub fn learn(&mut self, message: MessageCell) {
@@ -349,6 +333,22 @@ impl<R: rand::Rng> Lexicon<R> {
                 let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
                 Category::merge(cats);
             }
+        }
+
+        for _ in 0..self.cocategorize_magnitude {
+            // Get two random categories (we already know messages exist from above)
+            Category::cocategorize((
+                {
+                    let b = message.borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+                {
+                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                    b.category.clone()
+                },
+            ), self.cocategorization_ratio);
         }
     }
 
