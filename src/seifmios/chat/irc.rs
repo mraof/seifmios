@@ -32,7 +32,12 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                     if msg.contains(server.config().nickname()) {
                         let (reply_sender, reply_reciever) = channel();
                         sender.send(ReplyMessage(chat_message, Some(reply_sender))).unwrap();
-                        println!("{:?}", server.send_privmsg(target.as_str(), reply_reciever.recv().unwrap().as_str()).unwrap());
+                        let reply_message = reply_reciever.recv().unwrap();
+                        if let Some(fc) = reply_message.chars().next() {
+                            if fc != '.' && fc != '/' {
+                                server.send_privmsg(target.as_str(), reply_message.as_str()).unwrap();
+                            }
+                        }
                     }
                     else {
                         sender.send(ReplyMessage(chat_message, None)).unwrap();
