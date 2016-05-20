@@ -82,6 +82,12 @@ impl<R: rand::Rng> Lexicon<R> {
 
         self.messages.push(message.clone());
 
+        // Add message to conversation
+        {
+            let mut cb = conversation.borrow_mut();
+            cb.messages.push(message.clone());
+        }
+
         for word in content.split(' ').map(|s| {
             let string = s.to_string();
             match self.words.entry(string.clone()) {
@@ -153,7 +159,7 @@ impl<R: rand::Rng> Lexicon<R> {
         let mut orig_index = if let Some(con) = self.active_conversations.get(&source) {
             let cb = con.borrow();
             if let Some(conm) = cb.messages.last() {
-                let mb = (conm).borrow();
+                let mb = conm.borrow();
                 instances.push_back(self.rng.choose(&mb.instances[..]).unwrap().clone());
                 0
             } else {

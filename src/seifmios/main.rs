@@ -58,7 +58,7 @@ fn main() {
                         lex.show_categories(&mut socket);
                     },
                     Decision::Respond => {
-                        if let Some(s) = lex.initiate(console.clone()) {
+                        if let Some(s) = lex.respond(console.clone()) {
                             socket.msg(&format!("Original: {}\nResponse: {}", s.0, s.1));
                         }
                     },
