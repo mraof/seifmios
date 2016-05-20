@@ -150,8 +150,20 @@ impl<R: rand::Rng> Lexicon<R> {
         // Make a double-ended vec for building the message out of categories
         let mut instances = VecDeque::new();
 
-        // Push the base instance onto the categories vec
-        instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
+        let mut orig_index = if let Some(con) = self.active_conversations.get(&source) {
+            let cb = con.borrow();
+            if let Some(conm) = cb.messages.last() {
+                let mb = (conm).borrow();
+                instances.push_back(self.rng.choose(&mb.instances[..]).unwrap().clone());
+                0
+            } else {
+                instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
+                8192
+            }
+        } else {
+            instances.push_back(self.rng.choose(&base.borrow().instances[..]).unwrap().clone());
+            8192
+        };
 
         let forward_instance_chooser = |b: &Category, rng: &mut R| {
             // Find the count of how many word instances exist total
@@ -231,6 +243,7 @@ impl<R: rand::Rng> Lexicon<R> {
             if let Some(i) = ins {
                 let b = i.borrow();
                 instances.push_front(backward_instance_chooser(&b.category.borrow(), &mut self.rng));
+                orig_index += 1;
             } else {
                 break;
             }
@@ -246,16 +259,19 @@ impl<R: rand::Rng> Lexicon<R> {
                 .join(" "),
             instances.iter()
                 .cloned()
-                .map(|mut instance| {
-                    for _ in 0..self.cocategory_travel_distance {
-                        instance = {
-                            let b = instance.borrow();
-                            if self.rng.gen_range(0, 2) == 0 {
-                                backward_instance_chooser(&b.category.borrow(), &mut self.rng)
-                            } else {
-                                forward_instance_chooser(&b.category.borrow(), &mut self.rng)
-                            }
-                        };
+                .enumerate()
+                .map(|(index, mut instance)| {
+                    if index != orig_index {
+                        for _ in 0..self.cocategory_travel_distance {
+                            instance = {
+                                let b = instance.borrow();
+                                if self.rng.gen_range(0, 2) == 0 {
+                                    backward_instance_chooser(&b.category.borrow(), &mut self.rng)
+                                } else {
+                                    forward_instance_chooser(&b.category.borrow(), &mut self.rng)
+                                }
+                            };
+                        }
                     }
                     instance
                 })
@@ -339,8 +355,6 @@ impl<R: rand::Rng> Lexicon<R> {
                 set.insert(ib.category.clone());
             }
         }
-
-        let len = set.len();
 
         for cat in set {
             let catr = cat.borrow();
