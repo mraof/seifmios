@@ -48,7 +48,9 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                     if message.content.contains(config.name.as_str()) {
                         let (reply_sender, reply_reciever) = channel();
                         sender.send(ReplyMessage(chat_message, Some(reply_sender))).unwrap();
-                       let _ = discord.send_message(&message.channel_id, reply_reciever.recv().unwrap().as_str(), "", false);
+                        if let Some(reply_string) = reply_reciever.recv().unwrap() {
+                            let _ = discord.send_message(&message.channel_id, &reply_string, "", false);
+                        }
                     }
                     else {
                         sender.send(ReplyMessage(chat_message, None)).unwrap();

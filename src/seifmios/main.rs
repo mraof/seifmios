@@ -13,8 +13,6 @@ mod text;
 mod cli;
 mod chat;
 
-const THINK_TIMES: i32 = 20;
-
 fn main() {
     use rand::SeedableRng;
     let mut lex = text::Lexicon::new(rand::Isaac64Rng::from_seed(&[1, 2, 3, 4]));
@@ -113,7 +111,11 @@ fn main() {
                         lex.tell(source.clone(), author.clone(), message.message);
                         if let Some(reply_sender) = replier {
                             if let Some(reply) = lex.respond(source) {
-                                if reply_sender.send(reply.1).is_err() {
+                                if reply_sender.send(Some(reply.1)).is_err() {
+                                    println!("Warning: Reply sender from {} closed unexpectedly", message.source);
+                                }
+                            } else {
+                                if reply_sender.send(None).is_err() {
                                     println!("Warning: Reply sender from {} closed unexpectedly", message.source);
                                 }
                             }
@@ -122,10 +124,8 @@ fn main() {
                     Err(TryRecvError::Empty) => {},
                     Err(TryRecvError::Disconnected) => panic!("Fatal: The main sender just disappeared!?"),
                 }
-                // Think several times
-                for _ in 0..THINK_TIMES {
-                    lex.think();
-                }
+                // Think once
+                lex.think();
             },
         }
     }

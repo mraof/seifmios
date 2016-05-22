@@ -7,7 +7,7 @@ pub mod server;
 
 use std::sync::mpsc::Sender;
 
-pub struct ReplyMessage(pub ChatMessage, pub Option<Sender<String>>);
+pub struct ReplyMessage(pub ChatMessage, pub Option<Sender<Option<String>>>);
 
 #[derive(Deserialize, Debug)]
 pub struct ChatMessage {

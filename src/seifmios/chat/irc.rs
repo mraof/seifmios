@@ -30,10 +30,12 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                         .unwrap_or_else(|e| {println!("IRC Fatal: Message sender closed: {}", e); panic!()});
                     let reply_message = reply_reciever.recv()
                         .unwrap_or_else(|e| {println!("IRC Fatal: Reply receiver failed: {}", e); panic!()});
-                    if let Some(fc) = reply_message.chars().next() {
-                        if fc != '.' && fc != '/' {
-                            server.send_privmsg(target.as_str(), reply_message.as_str())
-                                .unwrap_or_else(|e| {println!("IRC Fatal: Failed to send message: {}", e); panic!()});
+                    if let Some(reply_string) = reply_message {
+                        if let Some(fc) = reply_string.chars().next() {
+                            if fc != '.' && fc != '/' {
+                                server.send_privmsg(target.as_str(), reply_string.as_str())
+                                    .unwrap_or_else(|e| {println!("IRC Fatal: Failed to send message: {}", e); panic!()});
+                            }
                         }
                     }
                 }
