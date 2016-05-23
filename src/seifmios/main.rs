@@ -121,11 +121,9 @@ fn main() {
                             }
                         }
                     },
-                    Err(TryRecvError::Empty) => {},
+                    Err(TryRecvError::Empty) => lex.think(),
                     Err(TryRecvError::Disconnected) => panic!("Fatal: The main sender just disappeared!?"),
                 }
-                // Think once
-                lex.think();
             },
         }
     }
