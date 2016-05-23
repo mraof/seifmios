@@ -5,6 +5,10 @@ use std::sync::mpsc::Sender;
 use chat::ChatMessage;
 use chat::ReplyMessage;
 use std::path::Path;
+use std::thread::sleep;
+use std::time::Duration;
+
+const IRC_RECONNECT_WAIT: u64 = 1;
 
 pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
     where P: AsRef<Path>
@@ -47,5 +51,7 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                 _ => {},
             }
         }
+        // Connection ended, so we need to wait an amount of time before trying again
+        sleep(Duration::from_secs(IRC_RECONNECT_WAIT));
     }
 }
