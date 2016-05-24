@@ -23,7 +23,8 @@ impl WordInstance {
         match preins {
             // There are two words
             (Some(i0), Some(i1)) => {
-                if Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) {
+                if Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) ||
+                    Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) {
                     true
                 } else if i0.borrow().word == i1.borrow().word {
                     WordInstance::precoincidence_neighbors((i0, i1), min_edge_distance.saturating_sub(1))
@@ -46,7 +47,8 @@ impl WordInstance {
         match postins {
             // There are two words
             (Some(i0), Some(i1)) => {
-                if Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) {
+                if Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) ||
+                    Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) {
                     true
                 } else if i0.borrow().word == i1.borrow().word {
                     WordInstance::postcoincidence_neighbors((i0, i1), min_edge_distance.saturating_sub(1))
