@@ -442,10 +442,10 @@ impl<R: rand::Rng> Lexicon<R> {
                 }
             },
             (Some(_), None) => {
-                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.0));
+                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.1));
             },
             (None, Some(_)) => {
-                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.1));
+                socket.msg(&format!("Ignored: Word \"{}\" coldn't be found", words.0));
             },
             (None, None) => {
                 socket.msg("Ignored: Neither word could be found");
