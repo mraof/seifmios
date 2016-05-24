@@ -45,6 +45,8 @@ pub struct Lexicon<R: Rng> {
     pub cocategorization_ratio: f64,
     pub cocategory_travel_distance: i32,
     pub cocategorize_magnitude: i32,
+    pub forward_edge_distance: usize,
+    pub backward_edge_distance: usize,
     words: BTreeMap<String, WordCell>,
     sources: BTreeMap<String, SourceCell>,
     conversations: Vec<ConversationCell>,

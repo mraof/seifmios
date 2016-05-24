@@ -49,6 +49,10 @@ pub enum Decision {
     GetTravelDistance,
     SetCocategorizeMagnitude(i32),
     GetCocategorizeMagnitude,
+    SetForwardEdgeDistance(usize),
+    GetForwardEdgeDistance,
+    SetBackwardEdgeDistance(usize),
+    GetBackwardEdgeDistance,
     FindRelation((String, String)),
 }
 
@@ -160,7 +164,7 @@ impl Iterator for Iter {
                             "set" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: set <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -212,6 +216,38 @@ impl Iterator for Iter {
                                                 }
                                             }
                                         },
+                                        "fw_edge" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set fw_edge <distance>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<usize>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetForwardEdgeDistance(steps), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
+                                        "bw_edge" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set bw_edge <distance>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<usize>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetBackwardEdgeDistance(steps), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
                                         _ => {
                                             socket.msg("Ignored: Unrecognized set value");
                                             Some(None)
@@ -222,7 +258,7 @@ impl Iterator for Iter {
                             "get" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: get <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -241,12 +277,29 @@ impl Iterator for Iter {
                                             } else {
                                                 Some(Some((Decision::GetTravelDistance, socket)))
                                             }
-                                        },"cc_mag" => {
+                                        },
+                                        "cc_mag" => {
                                             if params.len() != 2 {
                                                 socket.msg("Usage: get cc_mag");
                                                 Some(None)
                                             } else {
                                                 Some(Some((Decision::GetCocategorizeMagnitude, socket)))
+                                            }
+                                        },
+                                        "fw_edge" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get fw_edge");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetForwardEdgeDistance, socket)))
+                                            }
+                                        },
+                                        "bw_edge" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get bw_edge");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetBackwardEdgeDistance, socket)))
                                             }
                                         },
                                         _ => {

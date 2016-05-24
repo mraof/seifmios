@@ -12,6 +12,8 @@ use std::collections::btree_map::Entry;
 const RATIO_TO_COCATEGORIZE: f64 = 0.4;
 const COCATEGORY_TRAVEL_DISTANCE: i32 = 0;
 const COCATEGORIZE_MAGNITUDE: i32 = 65536;
+const FORWARD_EDGE_DISTANCE: usize = 1;
+const BACKWARD_EDGE_DISTANCE: usize = 1;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
@@ -21,6 +23,8 @@ impl<R: rand::Rng> Lexicon<R> {
             cocategorization_ratio: RATIO_TO_COCATEGORIZE,
             cocategory_travel_distance: COCATEGORY_TRAVEL_DISTANCE,
             cocategorize_magnitude: COCATEGORIZE_MAGNITUDE,
+            forward_edge_distance: FORWARD_EDGE_DISTANCE,
+            backward_edge_distance: BACKWARD_EDGE_DISTANCE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -348,7 +352,7 @@ impl<R: rand::Rng> Lexicon<R> {
                     let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
                     b.category.clone()
                 },
-            ), self.cocategorization_ratio);
+            ), self.cocategorization_ratio, self.forward_edge_distance, self.backward_edge_distance);
         }
     }
 

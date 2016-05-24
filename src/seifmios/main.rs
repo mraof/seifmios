@@ -98,6 +98,18 @@ fn main() {
                     Decision::GetCocategorizeMagnitude => {
                         socket.msg(&format!("{}", lex.cocategorize_magnitude));
                     },
+                    Decision::SetForwardEdgeDistance(cycles) => {
+                        lex.forward_edge_distance = cycles;
+                    },
+                    Decision::GetForwardEdgeDistance => {
+                        socket.msg(&format!("{}", lex.forward_edge_distance));
+                    },
+                    Decision::SetBackwardEdgeDistance(cycles) => {
+                        lex.backward_edge_distance = cycles;
+                    },
+                    Decision::GetBackwardEdgeDistance => {
+                        socket.msg(&format!("{}", lex.backward_edge_distance));
+                    },
                     Decision::FindRelation(words) => {
                         lex.find_relation(words, &mut socket);
                     },

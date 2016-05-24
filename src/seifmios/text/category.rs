@@ -9,23 +9,42 @@ impl Category {
         let cc = wrap(Self::default());
         {
             let clos = |cat: &CategoryCell| {
-                for instance in cat.borrow().instances.iter().cloned() {
-                    instance.borrow_mut().category = cc.clone();
+                let b = cat.borrow();
+                for precocat in &b.precocategories {
+                    cc.borrow_mut().precocategories.insert(precocat.clone());
+                    let mut pcb = precocat.borrow_mut();
+                    pcb.precocategories.remove(cat);
+                    pcb.precocategories.insert(cc.clone());
+                }
+                for postcocat in &b.postcocategories {
+                    cc.borrow_mut().postcocategories.insert(postcocat.clone());
+                    let mut pcb = postcocat.borrow_mut();
+                    pcb.postcocategories.remove(cat);
+                    pcb.postcocategories.insert(cc.clone());
                 }
             };
             clos(&cs.0);
             clos(&cs.1);
             let mut ccm = cc.borrow_mut();
             ccm.instances.append(&mut cs.0.borrow_mut().instances);
+            cs.0.borrow_mut().precocategories.clear();
+            cs.0.borrow_mut().postcocategories.clear();
             ccm.instances.append(&mut cs.1.borrow_mut().instances);
+            cs.1.borrow_mut().precocategories.clear();
+            cs.1.borrow_mut().postcocategories.clear();
+            for instance in &ccm.instances {
+                instance.borrow_mut().category = cc.clone();
+            }
         }
-        // TODO: Save all the cocategories from before and cocategorize them with this category
-        // except for the categories we just removed of course
         cc
     }
 
     /// Determine if the categories should be cocategories
-    pub fn cocategorize(cs: (CategoryCell, CategoryCell), cocategorization_ratio: f64) {
+    pub fn cocategorize(cs: (CategoryCell, CategoryCell),
+        cocategorization_ratio: f64,
+        forward_edge_distance: usize,
+        backward_edge_distance: usize,
+    ) {
         // First, check to see if they are the same category
         if cs.0 == cs.1 {
             // Nothing to do in that case
@@ -50,11 +69,11 @@ impl Category {
                     // so that doesn't need to be checked for.
 
                     // TODO: Look behind and ahead by more than just 1 instance
-                    if WordInstance::precoincidence_neighbors((i0, i1)) {
+                    if WordInstance::precoincidence_neighbors((i0, i1), forward_edge_distance) {
                         // Increment the amount of coincidences
                         pre_coincidences += 1;
                     }
-                    if WordInstance::postcoincidence_neighbors((i0, i1)) {
+                    if WordInstance::postcoincidence_neighbors((i0, i1), backward_edge_distance) {
                         // Increment the amount of coincidences
                         post_coincidences += 1;
                     }
