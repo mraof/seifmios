@@ -123,6 +123,7 @@ struct SerialWordInstance {
 }
 
 pub struct Message {
+    last_checked_at: usize,
     author: AuthorCell,
     conversation: ConversationCell,
     index: usize,

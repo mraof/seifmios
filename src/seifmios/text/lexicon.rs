@@ -78,6 +78,7 @@ impl<R: rand::Rng> Lexicon<R> {
         };
 
         let message = wrap(Message{
+            last_checked_at: 0,
             author: author.clone(),
             conversation: conversation.clone(),
             index: conversation.borrow().messages.len(),
@@ -312,31 +313,36 @@ impl<R: rand::Rng> Lexicon<R> {
     }
 
     pub fn learn(&mut self, message: MessageCell) {
-        // Vector of absolute perfect matches
-        let mut vones = Vec::new();
+        // Only attempt to learn category if it hasn't been learned as of last message
+        if message.borrow().last_checked_at != self.messages.len() {
+            // Vector of absolute perfect matches
+            let mut vones = Vec::new();
 
-        // Look through each word in the message
-        for word in &message.borrow().instances {
-            let borrow = word.borrow();
-            // Check each instance in that words instances
-            for instance in &borrow.word.borrow().instances {
-                // Get the message for each instance
-                let omessage = instance.borrow().message.clone();
-                // Find what kind of matches exist between the messages
-                if let Mismatch::One(best) =
-                    Message::category_and_word_mismatch((message.clone(), omessage.clone())) {
-                    vones.push(best);
+            // Look through each word in the message
+            for word in &message.borrow().instances {
+                let borrow = word.borrow();
+                // Check each instance in that words instances
+                for instance in &borrow.word.borrow().instances {
+                    // Get the message for each instance
+                    let omessage = instance.borrow().message.clone();
+                    // Find what kind of matches exist between the messages
+                    if let Mismatch::One(best) =
+                        Message::category_and_word_mismatch((message.clone(), omessage.clone())) {
+                        vones.push(best);
+                    }
                 }
             }
-        }
 
-        // Now that we have perfect matches, merge them into the same Category
-        for ms in vones {
-            // We only want to combine if they aren't already in the same category
-            if ms.0.borrow().category != ms.1.borrow().category {
-                let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
-                Category::merge(cats);
+            // Now that we have perfect matches, merge them into the same Category
+            for ms in vones {
+                // We only want to combine if they aren't already in the same category
+                if ms.0.borrow().category != ms.1.borrow().category {
+                    let cats = (ms.0.borrow().category.clone(), ms.1.borrow().category.clone());
+                    Category::merge(cats);
+                }
             }
+
+            message.borrow_mut().last_checked_at = self.messages.len();
         }
 
         for _ in 0..self.cocategorize_magnitude {
