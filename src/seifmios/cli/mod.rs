@@ -53,6 +53,10 @@ pub enum Decision {
     GetForwardEdgeDistance,
     SetBackwardEdgeDistance(usize),
     GetBackwardEdgeDistance,
+    SetForwardWordDistance(usize),
+    GetForwardWordDistance,
+    SetBackwardWordDistance(usize),
+    GetBackwardWordDistance,
     FindRelation((String, String)),
 }
 
@@ -164,7 +168,7 @@ impl Iterator for Iter {
                             "set" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: set <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge, fw_word, bw_word");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -248,6 +252,38 @@ impl Iterator for Iter {
                                                 }
                                             }
                                         },
+                                        "fw_word" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set fw_word <distance>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<usize>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetForwardWordDistance(steps), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
+                                        "bw_word" => {
+                                            if params.len() != 3 {
+                                                socket.msg("Usage: set bw_word <distance>");
+                                                Some(None)
+                                            } else {
+                                                match params[2].parse::<usize>() {
+                                                    Ok(steps) => {
+                                                        Some(Some((Decision::SetBackwardWordDistance(steps), socket)))
+                                                    },
+                                                    Err(e) => {
+                                                        socket.msg(&format!("Ignored: Error converting value: {}\n", e));
+                                                        Some(None)
+                                                    },
+                                                }
+                                            }
+                                        },
                                         _ => {
                                             socket.msg("Ignored: Unrecognized set value");
                                             Some(None)
@@ -258,7 +294,7 @@ impl Iterator for Iter {
                             "get" => {
                                 if params.len() < 2 {
                                     socket.msg("Usage: get <value>");
-                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge");
+                                    socket.msg("Values: cc_ratio, cc_travel, cc_mag, fw_edge, bw_edge, fw_word, bw_word");
                                     Some(None)
                                 } else {
                                     match &*params[1] {
@@ -300,6 +336,22 @@ impl Iterator for Iter {
                                                 Some(None)
                                             } else {
                                                 Some(Some((Decision::GetBackwardEdgeDistance, socket)))
+                                            }
+                                        },
+                                        "fw_word" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get fw_word");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetForwardWordDistance, socket)))
+                                            }
+                                        },
+                                        "bw_word" => {
+                                            if params.len() != 2 {
+                                                socket.msg("Usage: get bw_word");
+                                                Some(None)
+                                            } else {
+                                                Some(Some((Decision::GetBackwardWordDistance, socket)))
                                             }
                                         },
                                         _ => {

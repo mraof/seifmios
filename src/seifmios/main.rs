@@ -110,6 +110,18 @@ fn main() {
                     Decision::GetBackwardEdgeDistance => {
                         socket.msg(&format!("{}", lex.backward_edge_distance));
                     },
+                    Decision::SetForwardWordDistance(cycles) => {
+                        lex.forward_word_distance = cycles;
+                    },
+                    Decision::GetForwardWordDistance => {
+                        socket.msg(&format!("{}", lex.forward_word_distance));
+                    },
+                    Decision::SetBackwardWordDistance(cycles) => {
+                        lex.backward_word_distance = cycles;
+                    },
+                    Decision::GetBackwardWordDistance => {
+                        socket.msg(&format!("{}", lex.backward_word_distance));
+                    },
                     Decision::FindRelation(words) => {
                         lex.find_relation(words, &mut socket);
                     },
