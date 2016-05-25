@@ -8,6 +8,9 @@ use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
 
+extern crate itertools;
+use self::itertools::Itertools;
+
 const IRC_RECONNECT_WAIT: u64 = 1;
 
 pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
@@ -24,12 +27,13 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
             match message.command {
                 Command::PRIVMSG(target, msg) => {
                     let name = message.prefix.unwrap_or_else(|| panic!("IRC Fatal: Unable to get msg name"));
+                    let nick = server.config().nickname().to_string();
                     let chat_message = ChatMessage {
                         source: target.clone(),
                         author: name,
-                        message: msg.clone(),
+                        message: msg.split(' ').filter(|e| e == &nick).join(" "),
                     };
-                    if msg.contains(server.config().nickname()) {
+                    if msg.contains(&nick) {
                         let (reply_sender, reply_reciever) = channel();
                         sender.send(ReplyMessage(chat_message, Some(reply_sender)))
                             .unwrap_or_else(|e| panic!("IRC Fatal: Message sender closed: {}", e));

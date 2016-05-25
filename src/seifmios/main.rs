@@ -131,18 +131,23 @@ fn main() {
                 match receiver.try_recv() {
                     Ok(chat::ReplyMessage(message, replier)) => {
                         let source = lex.source(message.source.clone());
-                        let author = lex.author(source.clone(), message.author);
-                        lex.tell(source.clone(), author.clone(), message.message);
+                        let author = lex.author(source.clone(), message.author.clone());
                         if let Some(reply_sender) = replier {
-                            if let Some(reply) = lex.respond(source) {
-                                if reply_sender.send(Some(reply.1)).is_err() {
-                                    println!("Warning: Reply sender from {} closed unexpectedly", message.source);
-                                }
-                            } else {
-                                if reply_sender.send(None).is_err() {
-                                    println!("Warning: Reply sender from {} closed unexpectedly", message.source);
-                                }
+                            lex.switch(source.clone());
+                            if !message.message.is_empty() {
+                                lex.tell(source.clone(), author.clone(), message.message.clone());
                             }
+                            if let Some(reply) = lex.respond(source) {
+                                reply_sender.send(Some(reply.1)).unwrap_or_else(|e| {
+                                    println!("Warning: Reply sender from {} closed unexpectedly: {}", message.source, e);
+                                });
+                            } else {
+                                reply_sender.send(None).unwrap_or_else(|e| {
+                                    println!("Warning: Reply sender from {} closed unexpectedly: {}", message.source, e);
+                                });
+                            }
+                        } else {
+                            lex.tell(source.clone(), author.clone(), message.message);
                         }
                     },
                     Err(TryRecvError::Empty) => lex.think(),
