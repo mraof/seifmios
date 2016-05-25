@@ -31,7 +31,7 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                     let chat_message = ChatMessage {
                         source: target.clone(),
                         author: name,
-                        message: msg.split(' ').filter(|e| e == &nick).join(" "),
+                        message: msg.split(' ').filter(|e| e != &nick).join(" "),
                     };
                     if msg.contains(&nick) {
                         let (reply_sender, reply_reciever) = channel();
