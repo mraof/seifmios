@@ -14,6 +14,8 @@ const COCATEGORY_TRAVEL_DISTANCE: i32 = 0;
 const COCATEGORIZE_MAGNITUDE: i32 = 65536;
 const FORWARD_EDGE_DISTANCE: usize = 1;
 const BACKWARD_EDGE_DISTANCE: usize = 1;
+const FORWARD_WORD_DISTANCE: usize = 1;
+const BACKWARD_WORD_DISTANCE: usize = 1;
 
 impl<R: rand::Rng> Lexicon<R> {
     /// Make a new lexion. It needs its own Rng for internal purposes of learning.
@@ -25,6 +27,8 @@ impl<R: rand::Rng> Lexicon<R> {
             cocategorize_magnitude: COCATEGORIZE_MAGNITUDE,
             forward_edge_distance: FORWARD_EDGE_DISTANCE,
             backward_edge_distance: BACKWARD_EDGE_DISTANCE,
+            forward_word_distance: FORWARD_WORD_DISTANCE,
+            backward_word_distance: BACKWARD_WORD_DISTANCE,
             words: Default::default(),
             sources: Default::default(),
             conversations: Default::default(),
@@ -347,18 +351,25 @@ impl<R: rand::Rng> Lexicon<R> {
 
         for _ in 0..self.cocategorize_magnitude {
             // Get two random categories (we already know messages exist from above)
-            Category::cocategorize((
-                {
-                    let b = message.borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-                {
-                    let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
-                    let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
-                    b.category.clone()
-                },
-            ), self.cocategorization_ratio, self.forward_edge_distance, self.backward_edge_distance);
+            Category::cocategorize(
+                (
+                    {
+                        let b = message.borrow();
+                        let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                        b.category.clone()
+                    },
+                    {
+                        let b = self.rng.choose(&self.messages[..]).unwrap().borrow();
+                        let b = self.rng.choose(&b.instances[..]).unwrap().borrow();
+                        b.category.clone()
+                    },
+                ),
+                self.cocategorization_ratio,
+                self.forward_edge_distance,
+                self.backward_edge_distance,
+                self.forward_word_distance,
+                self.backward_word_distance,
+            );
         }
     }
 

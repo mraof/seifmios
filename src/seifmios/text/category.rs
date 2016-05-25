@@ -44,6 +44,8 @@ impl Category {
         cocategorization_ratio: f64,
         forward_edge_distance: usize,
         backward_edge_distance: usize,
+        forward_word_distance: usize,
+        backward_word_distance: usize,
     ) {
         // First, check to see if they are the same category
         if cs.0 == cs.1 {
@@ -69,11 +71,11 @@ impl Category {
                     // so that doesn't need to be checked for.
 
                     // TODO: Look behind and ahead by more than just 1 instance
-                    if WordInstance::precoincidence_neighbors((i0, i1), forward_edge_distance) {
+                    if WordInstance::precoincidence_neighbors((i0, i1), forward_edge_distance, forward_word_distance) {
                         // Increment the amount of coincidences
                         pre_coincidences += 1;
                     }
-                    if WordInstance::postcoincidence_neighbors((i0, i1), backward_edge_distance) {
+                    if WordInstance::postcoincidence_neighbors((i0, i1), backward_edge_distance, backward_word_distance) {
                         // Increment the amount of coincidences
                         post_coincidences += 1;
                     }
