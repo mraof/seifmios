@@ -147,7 +147,9 @@ fn main() {
                                 });
                             }
                         } else {
-                            lex.tell(source.clone(), author.clone(), message.message);
+                            if !message.message.is_empty() {
+                                lex.tell(source.clone(), author.clone(), message.message);
+                            }
                         }
                     },
                     Err(TryRecvError::Empty) => lex.think(),

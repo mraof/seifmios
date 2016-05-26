@@ -6,18 +6,20 @@ use chat::ChatMessage;
 use chat::ReplyMessage;
 use std::path::Path;
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 extern crate itertools;
 use self::itertools::Itertools;
 
 const IRC_RECONNECT_WAIT: u64 = 1;
+const IRC_MILI_LIMITER: u64 = 1500;
 
 pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
     where P: AsRef<Path>
 {
     let config = Config::load(path)
         .unwrap_or_else(|e| panic!("IRC Fatal: Couldn't load config file: {}", e));
+    let mut last_send = Instant::now();
     loop {
         let server = IrcServer::from_config(config.clone())
             .unwrap_or_else(|e| panic!("IRC Fatal: Couldn't make server: {}", e));
@@ -33,7 +35,7 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                         author: name,
                         message: msg.split(' ').filter(|e| e != &nick).join(" "),
                     };
-                    if msg.contains(&nick) {
+                    if msg.contains(&nick) && Instant::now() - last_send > Duration::from_millis(IRC_MILI_LIMITER) {
                         let (reply_sender, reply_reciever) = channel();
                         sender.send(ReplyMessage(chat_message, Some(reply_sender)))
                             .unwrap_or_else(|e| panic!("IRC Fatal: Message sender closed: {}", e));
@@ -47,6 +49,7 @@ pub fn connect<P>(sender: Sender<ReplyMessage>, path: P)
                                 }
                             }
                         }
+                        last_send = Instant::now();
                     } else {
                         sender.send(ReplyMessage(chat_message, None))
                             .unwrap_or_else(|e| panic!("IRC Fatal: Message sender closed: {}", e));
