@@ -23,8 +23,7 @@ impl WordInstance {
         match preins {
             // There are two words
             (Some(i0), Some(i1)) => {
-                if Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) ||
-                    Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) {
+                if Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) {
                     true
                 } else if i0.borrow().word == i1.borrow().word {
                     if words_only_distance == 0 {
@@ -53,8 +52,7 @@ impl WordInstance {
         match postins {
             // There are two words
             (Some(i0), Some(i1)) => {
-                if Category::are_precocategories((&i0.borrow().category, &i1.borrow().category)) ||
-                    Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) {
+                if Category::are_postcocategories((&i0.borrow().category, &i1.borrow().category)) {
                     true
                 } else if i0.borrow().word == i1.borrow().word {
                     if words_only_distance == 0 {
